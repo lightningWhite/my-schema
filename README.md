@@ -1,6 +1,6 @@
 # Schema
 
-**Turn tidbits in passing into guideposts.**
+**Turn passing tidbits into guideposts.**
 
 Most of what we learn slips away within a couple of weeks. Schema is a place to
 capture the key bits of insight, experience and learning you pick up through

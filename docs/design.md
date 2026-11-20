@@ -8,7 +8,7 @@
 
 ## 1. Vision
 
-> **Turn tidbits in passing into guideposts.**
+> **Turn passing tidbits into guideposts.**
 
 Most of what we learn slips away. We notice something true about ourselves,
 pick up a lesson the hard way, hear a line that lands — and two weeks later

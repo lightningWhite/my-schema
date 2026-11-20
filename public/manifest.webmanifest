@@ -1,7 +1,7 @@
 {
   "name": "Schema",
   "short_name": "Schema",
-  "description": "Turn tidbits in passing into guideposts.",
+  "description": "Turn passing tidbits into guideposts.",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",

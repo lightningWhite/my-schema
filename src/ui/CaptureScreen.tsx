@@ -79,7 +79,7 @@ export function CaptureScreen() {
           <Logo size={34} />
           <span>Schema</span>
         </div>
-        <p className="tagline">Turn tidbits in passing into guideposts.</p>
+        <p className="tagline">Turn passing tidbits into guideposts.</p>
 
         <form
           className="capture-box"
@@ -92,7 +92,7 @@ export function CaptureScreen() {
             ref={inputRef}
             rows={1}
             value={text}
-            placeholder="What have you noticed, learned or come to believe?"
+            placeholder="Add a tidbit"
             aria-label="New grain"
             onChange={(e) => {
               setText(e.target.value);
