@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { exportZip, importFiles, saveSettings } from '../app/actions';
-import { useGrains, useSettings } from '../app/hooks';
+import { useTidbits, useSettings } from '../app/hooks';
 import { allCategories } from '../core/categories';
 import type { Appearance, Style, Theme } from '../app/theme';
 import { plural } from './format';
@@ -17,7 +17,7 @@ const APPEARANCES: Array<{ id: Appearance; name: string }> = [
 
 export function SettingsScreen({ theme, onTheme }: { theme: Theme; onTheme: (t: Theme) => void }) {
   const settings = useSettings();
-  const grains = useGrains() ?? [];
+  const tidbits = useTidbits() ?? [];
   const fileRef = useRef<HTMLInputElement>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [persisted, setPersisted] = useState<boolean | null>(null);
@@ -79,7 +79,7 @@ export function SettingsScreen({ theme, onTheme }: { theme: Theme; onTheme: (t: 
       <section className="settings-section">
         <h2>Review</h2>
         <label className="field inline">
-          <span>Grains per day</span>
+          <span>Tidbits per day</span>
           <input
             type="number"
             min={1}
@@ -92,7 +92,7 @@ export function SettingsScreen({ theme, onTheme }: { theme: Theme; onTheme: (t: 
           <span>Focus on</span>
           <select value={settings.reviewFocus ?? ''} onChange={(e) => void saveSettings({ ...settings, reviewFocus: e.target.value || undefined })}>
             <option value="">Everything</option>
-            {allCategories(grains).map((c) => (
+            {allCategories(tidbits).map((c) => (
               <option key={c} value={c}>
                 {c}
               </option>
@@ -104,8 +104,8 @@ export function SettingsScreen({ theme, onTheme }: { theme: Theme; onTheme: (t: 
       <section className="settings-section">
         <h2>Your data</h2>
         <p className="muted">
-          Your {plural(grains.length, 'grain')} live on this device only, until GitHub sync arrives. Export now and then to keep a backup — the zip
-          holds one readable Markdown file per grain.
+          Your {plural(tidbits.length, 'tidbit')} live on this device only, until GitHub sync arrives. Export now and then to keep a backup — the zip
+          holds one readable Markdown file per tidbit.
         </p>
         {persisted === false && (
           <p className="warning">
@@ -117,7 +117,7 @@ export function SettingsScreen({ theme, onTheme }: { theme: Theme; onTheme: (t: 
           </p>
         )}
         <div className="button-row">
-          <button className="button primary" onClick={() => void doExport()} disabled={!grains.length}>
+          <button className="button primary" onClick={() => void doExport()} disabled={!tidbits.length}>
             Export schema (.zip)
           </button>
           <button className="button" onClick={() => fileRef.current?.click()}>
@@ -136,7 +136,7 @@ export function SettingsScreen({ theme, onTheme }: { theme: Theme; onTheme: (t: 
               try {
                 const r = await importFiles(files);
                 setMessage(
-                  `Imported: ${plural(r.added, 'new grain')}, ${plural(r.merged, 'grain')} merged with what was here.` +
+                  `Imported: ${plural(r.added, 'new tidbit')}, ${plural(r.merged, 'tidbit')} merged with what was here.` +
                     (r.errors.length ? ` ${plural(r.errors.length, 'file')} couldn't be read: ${r.errors.map((x) => x.path).join(', ')}` : ''),
                 );
               } catch (err) {
@@ -160,7 +160,7 @@ export function SettingsScreen({ theme, onTheme }: { theme: Theme; onTheme: (t: 
         <h2>Coming next</h2>
         <ul className="muted">
           <li>Sync to a private GitHub repo, so your schema is backed up and on every device.</li>
-          <li>Publishing grains to a public schema, and planting other people's grains in yours.</li>
+          <li>Publishing tidbits to a public schema, and planting other people's tidbits in yours.</li>
         </ul>
       </section>
     </div>

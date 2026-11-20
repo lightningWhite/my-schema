@@ -1,48 +1,48 @@
 /**
- * Today's review (docs/design.md §4): a handful of grains, one at a time.
+ * Today's review (docs/design.md §4): a handful of tidbits, one at a time.
  * Still true · Revise · Retire · Skip.
  */
 import { useState } from 'react';
-import { reaffirmGrain, reviseGrain, skipGrain } from '../app/actions';
-import { href, useNow, useReviewState, useGrains, useSettings } from '../app/hooks';
+import { reaffirmTidbit, reviseTidbit, skipTidbit } from '../app/actions';
+import { href, useNow, useReviewState, useTidbits, useSettings } from '../app/hooks';
 import { allCategories } from '../core/categories';
 import { CONFIDENCE_LABEL } from '../core/kinds';
 import { dailyReview } from '../core/review';
-import { createdAt, currentRevision, revisions } from '../core/grain';
-import type { Grain } from '../core/types';
+import { createdAt, currentRevision, revisions } from '../core/tidbit';
+import type { Tidbit } from '../core/types';
 import { longDate, plural, relativeDate } from './format';
 import { Empty, KindBadge, RevisionBody } from './parts';
 import { RetirePanel } from './RetirePanel';
-import { GrainEditor } from './GrainEditor';
+import { TidbitEditor } from './TidbitEditor';
 
 export function ReviewScreen() {
-  const grains = useGrains();
+  const tidbits = useTidbits();
   const state = useReviewState();
   const settings = useSettings();
   const now = useNow();
   const [doneCount, setDoneCount] = useState(0);
-  if (!grains || !state) return null;
+  if (!tidbits || !state) return null;
 
-  const queue = dailyReview(grains, state, now, { size: settings.reviewSize, focus: settings.reviewFocus });
-  const grain = queue[0];
+  const queue = dailyReview(tidbits, state, now, { size: settings.reviewSize, focus: settings.reviewFocus });
+  const tidbit = queue[0];
 
   return (
     <div className="screen narrow">
       <header className="screen-header">
         <h1>Review</h1>
-        {grain && <span className="header-count">{queue.length} left today</span>}
+        {tidbit && <span className="header-count">{queue.length} left today</span>}
       </header>
       {settings.reviewFocus && <div className="focus-note">Focused on {settings.reviewFocus}</div>}
-      {grain ? (
-        <ReviewCard key={grain.id} grain={grain} grains={grains} now={now} onReviewed={() => setDoneCount((n) => n + 1)} />
+      {tidbit ? (
+        <ReviewCard key={tidbit.id} tidbit={tidbit} tidbits={tidbits} now={now} onReviewed={() => setDoneCount((n) => n + 1)} />
       ) : (
         <Empty title={doneCount ? 'Done for today' : 'Nothing to review today'}>
           <p>
-            {grains.length === 0
-              ? 'Grains you capture will come back here now and then, so they stay alive in your mind.'
+            {tidbits.length === 0
+              ? 'Tidbits you capture will come back here now and then, so they stay alive in your mind.'
               : doneCount
-                ? `You went through ${plural(doneCount, 'grain')}. More will come back tomorrow.`
-                : 'Your grains come back on their own schedule. Check back tomorrow.'}
+                ? `You went through ${plural(doneCount, 'tidbit')}. More will come back tomorrow.`
+                : 'Your tidbits come back on their own schedule. Check back tomorrow.'}
           </p>
         </Empty>
       )}
@@ -50,28 +50,28 @@ export function ReviewScreen() {
   );
 }
 
-function ReviewCard({ grain, grains, now, onReviewed }: { grain: Grain; grains: Grain[]; now: string; onReviewed: () => void }) {
+function ReviewCard({ tidbit, tidbits, now, onReviewed }: { tidbit: Tidbit; tidbits: Tidbit[]; now: string; onReviewed: () => void }) {
   const [mode, setMode] = useState<'view' | 'revise' | 'retire'>('view');
-  const cur = currentRevision(grain);
-  const revs = revisions(grain);
-  const lastTouched = grain.history[0]!;
+  const cur = currentRevision(tidbit);
+  const revs = revisions(tidbit);
+  const lastTouched = tidbit.history[0]!;
 
   return (
     <article className="card review-card">
       <div className="card-meta">
-        <KindBadge kind={grain.kind} />
-        <span className="cat">{grain.category ?? 'Unsorted'}</span>
+        <KindBadge kind={tidbit.kind} />
+        <span className="cat">{tidbit.category ?? 'Unsorted'}</span>
         {cur.confidence && <span className="confidence">{CONFIDENCE_LABEL[cur.confidence]}</span>}
       </div>
-      {grain.title && <h2 className="card-title">{grain.title}</h2>}
+      {tidbit.title && <h2 className="card-title">{tidbit.title}</h2>}
       <RevisionBody rev={cur} />
-      {grain.source && <div className="source">— {grain.source}</div>}
+      {tidbit.source && <div className="source">— {tidbit.source}</div>}
       <div className="card-foot muted">
-        Written {longDate(createdAt(grain), now)}
+        Written {longDate(createdAt(tidbit), now)}
         {revs.length > 1 && ` · ${plural(revs.length, 'revision')}`}
         {lastTouched.type === 'reaffirmation' && ` · last reaffirmed ${relativeDate(lastTouched.at, now)}`}
         {' · '}
-        <a href={href({ name: 'grain', id: grain.id })}>History</a>
+        <a href={href({ name: 'tidbit', id: tidbit.id })}>History</a>
       </div>
 
       {mode === 'view' && (
@@ -79,7 +79,7 @@ function ReviewCard({ grain, grains, now, onReviewed }: { grain: Grain; grains: 
           <button
             className="button primary big"
             onClick={async () => {
-              await reaffirmGrain(grain.id);
+              await reaffirmTidbit(tidbit.id);
               onReviewed();
             }}
           >
@@ -94,7 +94,7 @@ function ReviewCard({ grain, grains, now, onReviewed }: { grain: Grain; grains: 
           <button
             className="button big subtle"
             onClick={async () => {
-              await skipGrain(grain.id);
+              await skipTidbit(tidbit.id);
               onReviewed();
             }}
           >
@@ -103,18 +103,18 @@ function ReviewCard({ grain, grains, now, onReviewed }: { grain: Grain; grains: 
         </div>
       )}
       {mode === 'revise' && (
-        <GrainEditor
+        <TidbitEditor
           mode="revise"
           initial={{ text: cur.text, details: cur.details, confidence: cur.confidence }}
           onCancel={() => setMode('view')}
           onSave={async ({ text, details, confidence, why }) => {
-            await reviseGrain(grain.id, { text, details, confidence, why }, true);
+            await reviseTidbit(tidbit.id, { text, details, confidence, why }, true);
             onReviewed();
           }}
         />
       )}
       {mode === 'retire' && (
-        <RetirePanel grain={grain} categories={allCategories(grains)} onCancel={() => setMode('view')} onDone={onReviewed} />
+        <RetirePanel tidbit={tidbit} categories={allCategories(tidbits)} onCancel={() => setMode('view')} onDone={onReviewed} />
       )}
     </article>
   );

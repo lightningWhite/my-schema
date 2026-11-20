@@ -1,16 +1,16 @@
 import { useEffect } from 'react';
 import { dueCount } from '../core/review';
-import { isDraft } from '../core/grain';
+import { isDraft } from '../core/tidbit';
 import { SchemaScreen } from '../ui/SchemaScreen';
 import { CaptureScreen } from '../ui/CaptureScreen';
 import { Icon, Logo, type IconName } from '../ui/parts';
 import { ReviewScreen } from '../ui/ReviewScreen';
-import { GrainScreen } from '../ui/GrainScreen';
+import { TidbitScreen } from '../ui/TidbitScreen';
 import { SettingsScreen } from '../ui/SettingsScreen';
 import { OrganizeScreen } from '../ui/OrganizeScreen';
 import { AboutScreen } from '../ui/AboutScreen';
 import { useTheme } from './theme';
-import { href, useNow, useReviewState, useRoute, useGrains, useSettings, type Route } from './hooks';
+import { href, useNow, useReviewState, useRoute, useTidbits, useSettings, type Route } from './hooks';
 
 const TABS: Array<{ route: Route; label: string; icon: IconName }> = [
   { route: { name: 'capture' }, label: 'Capture', icon: 'capture' },
@@ -22,16 +22,16 @@ const TABS: Array<{ route: Route; label: string; icon: IconName }> = [
 
 export function App() {
   const route = useRoute();
-  const grains = useGrains();
+  const tidbits = useTidbits();
   const review = useReviewState();
   const settings = useSettings();
   const now = useNow();
   const [theme, setTheme] = useTheme();
 
   const badges: Partial<Record<Route['name'], number>> = {};
-  if (grains && review) {
-    badges.organize = grains.filter(isDraft).length;
-    badges.review = dueCount(grains, review, now, { size: settings.reviewSize, focus: settings.reviewFocus });
+  if (tidbits && review) {
+    badges.organize = tidbits.filter(isDraft).length;
+    badges.review = dueCount(tidbits, review, now, { size: settings.reviewSize, focus: settings.reviewFocus });
   }
   // App icon badge where supported (installed PWAs).
   const reviewBadge = badges.review;
@@ -40,7 +40,7 @@ export function App() {
     void (reviewBadge ? navigator.setAppBadge(reviewBadge) : navigator.clearAppBadge()).catch(() => {});
   }, [reviewBadge]);
 
-  const active = route.name === 'grain' ? 'schema' : route.name;
+  const active = route.name === 'tidbit' ? 'schema' : route.name;
 
   return (
     <div className="app">
@@ -64,7 +64,7 @@ export function App() {
         {route.name === 'about' && <AboutScreen />}
         {route.name === 'review' && <ReviewScreen />}
         {route.name === 'schema' && <SchemaScreen key={route.category ?? ''} category={route.category} query={route.query} />}
-        {route.name === 'grain' && <GrainScreen key={route.id} id={route.id} />}
+        {route.name === 'tidbit' && <TidbitScreen key={route.id} id={route.id} />}
         {route.name === 'settings' && <SettingsScreen theme={theme} onTheme={setTheme} />}
       </main>
     </div>

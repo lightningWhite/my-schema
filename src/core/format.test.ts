@@ -1,8 +1,8 @@
 import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
-import { escapeText, parseGrain, GrainFormatError, serializeGrain, unescapeText } from './format';
-import { arbGrain } from './arbitraries';
-import type { Grain } from './types';
+import { escapeText, parseTidbit, TidbitFormatError, serializeTidbit, unescapeText } from './format';
+import { arbTidbit } from './arbitraries';
+import type { Tidbit } from './types';
 
 const DESIGN_EXAMPLE = `---
 id: 01JDA7Q3V2N8XK5M4R6T9WBYCE
@@ -25,10 +25,10 @@ Lost half the crop in the July heat wave on the twice-a-week schedule.
 Water tomatoes deeply twice a week instead of a little every day.
 `;
 
-describe('parseGrain', () => {
+describe('parseTidbit', () => {
   it('reads the example from the design doc', () => {
-    const grain = parseGrain(DESIGN_EXAMPLE);
-    expect(grain).toMatchObject({
+    const tidbit = parseTidbit(DESIGN_EXAMPLE);
+    expect(tidbit).toMatchObject({
       id: '01JDA7Q3V2N8XK5M4R6T9WBYCE',
       title: 'Deep watering beats frequent watering',
       kind: 'insight',
@@ -39,7 +39,7 @@ describe('parseGrain', () => {
       origin: null,
       updated: '2027-07-14T03:12:00Z',
     });
-    expect(grain.history).toEqual([
+    expect(tidbit.history).toEqual([
       {
         type: 'revision',
         at: '2027-07-14T03:12:00Z',
@@ -61,29 +61,29 @@ describe('parseGrain', () => {
       '<!-- rev at=2027',
       '<!-- reaffirmed at=2028-03-02T14:00:00Z -->\n\n<!-- rev at=2027',
     );
-    const grain = parseGrain(file);
-    expect(grain.history[0]).toEqual({ type: 'reaffirmation', at: '2028-03-02T14:00:00Z' });
-    expect(grain.history).toHaveLength(3);
+    const tidbit = parseTidbit(file);
+    expect(tidbit.history[0]).toEqual({ type: 'reaffirmation', at: '2028-03-02T14:00:00Z' });
+    expect(tidbit.history).toHaveLength(3);
   });
 
   it('preserves unknown frontmatter fields', () => {
     const file = DESIGN_EXAMPLE.replace('origin: null\n', 'origin: null\nmood: hopeful\nfuture: { a: [1, 2] }\n');
-    const grain = parseGrain(file);
-    expect(grain.extra).toEqual({ mood: 'hopeful', future: { a: [1, 2] } });
-    expect(parseGrain(serializeGrain(grain)).extra).toEqual(grain.extra);
-    expect(serializeGrain(grain)).toContain('mood: hopeful');
+    const tidbit = parseTidbit(file);
+    expect(tidbit.extra).toEqual({ mood: 'hopeful', future: { a: [1, 2] } });
+    expect(parseTidbit(serializeTidbit(tidbit)).extra).toEqual(tidbit.extra);
+    expect(serializeTidbit(tidbit)).toContain('mood: hopeful');
   });
 
   it('tolerates a file without the trailing blank line, and CRLF-free BOM', () => {
-    const grain = parseGrain('\uFEFF' + DESIGN_EXAMPLE.trimEnd());
-    expect(grain.history[1]).toMatchObject({ text: 'Water tomatoes deeply twice a week instead of a little every day.' });
+    const tidbit = parseTidbit('\uFEFF' + DESIGN_EXAMPLE.trimEnd());
+    expect(tidbit.history[1]).toMatchObject({ text: 'Water tomatoes deeply twice a week instead of a little every day.' });
   });
 
   it('rejects files it cannot understand', () => {
-    expect(() => parseGrain('no frontmatter')).toThrow(GrainFormatError);
-    expect(() => parseGrain('---\nid: x\n---\n\n')).toThrow(/no revisions/);
-    expect(() => parseGrain(DESIGN_EXAMPLE.replace('kind: insight', 'kind: rumor'))).toThrow(/Unknown kind/);
-    expect(() => parseGrain('---\nid: x\n---\n\n<!-- why -->\nx\n')).toThrow(/why block/);
+    expect(() => parseTidbit('no frontmatter')).toThrow(TidbitFormatError);
+    expect(() => parseTidbit('---\nid: x\n---\n\n')).toThrow(/no revisions/);
+    expect(() => parseTidbit(DESIGN_EXAMPLE.replace('kind: insight', 'kind: rumor'))).toThrow(/Unknown kind/);
+    expect(() => parseTidbit('---\nid: x\n---\n\n<!-- why -->\nx\n')).toThrow(/why block/);
   });
 });
 
@@ -97,31 +97,31 @@ describe('escaping', () => {
     expect(unescapeText(escaped)).toBe(text);
   });
 
-  it('keeps marker-like grain text from breaking the file', () => {
-    const grain = parseGrain(DESIGN_EXAMPLE);
-    const tricky: Grain = {
-      ...grain,
-      history: [{ type: 'revision', at: '2028-01-01T00:00:00Z', text: 'Line one\n<!-- rev at=evil -->\n<!-- why -->\nend' }, ...grain.history],
+  it('keeps marker-like tidbit text from breaking the file', () => {
+    const tidbit = parseTidbit(DESIGN_EXAMPLE);
+    const tricky: Tidbit = {
+      ...tidbit,
+      history: [{ type: 'revision', at: '2028-01-01T00:00:00Z', text: 'Line one\n<!-- rev at=evil -->\n<!-- why -->\nend' }, ...tidbit.history],
     };
-    expect(parseGrain(serializeGrain(tricky))).toEqual(tricky);
+    expect(parseTidbit(serializeTidbit(tricky))).toEqual(tricky);
   });
 });
 
 describe('round trip (property)', () => {
-  it('parse(serialize(grain)) equals grain', () => {
+  it('parse(serialize(tidbit)) equals tidbit', () => {
     fc.assert(
-      fc.property(arbGrain, (grain) => {
-        expect(parseGrain(serializeGrain(grain))).toEqual(grain);
+      fc.property(arbTidbit, (tidbit) => {
+        expect(parseTidbit(serializeTidbit(tidbit))).toEqual(tidbit);
       }),
       { numRuns: 500 },
     );
   });
 
-  it('serialize is stable: serialize(parse(serialize(grain))) equals serialize(grain)', () => {
+  it('serialize is stable: serialize(parse(serialize(tidbit))) equals serialize(tidbit)', () => {
     fc.assert(
-      fc.property(arbGrain, (grain) => {
-        const once = serializeGrain(grain);
-        expect(serializeGrain(parseGrain(once))).toBe(once);
+      fc.property(arbTidbit, (tidbit) => {
+        const once = serializeTidbit(tidbit);
+        expect(serializeTidbit(parseTidbit(once))).toBe(once);
       }),
       { numRuns: 300 },
     );
@@ -149,7 +149,7 @@ Warm, moist air rises and cools; water condenses on dust.
 Read about it after a flight.
 
 `;
-    const g = parseGrain(file);
+    const g = parseTidbit(file);
     expect(g.history[0]).toEqual({
       type: 'revision',
       at: '2027-07-14T03:12:00Z',
@@ -158,13 +158,13 @@ Read about it after a flight.
       details: 'Warm, moist air rises and cools; water condenses on dust.',
       why: 'Read about it after a flight.',
     });
-    expect(serializeGrain(g)).toBe(file);
+    expect(serializeTidbit(g)).toBe(file);
   });
 
   it('rejects details after a why, or twice', () => {
     const base = '---\nid: x\n---\n\n<!-- rev at=2020-01-01T00:00:00Z -->\nT\n\n';
-    expect(() => parseGrain(base + '<!-- why -->\nw\n\n<!-- details -->\nd\n')).toThrow(/details block/);
-    expect(() => parseGrain(base + '<!-- details -->\nd\n\n<!-- details -->\nd\n')).toThrow(/details block/);
+    expect(() => parseTidbit(base + '<!-- why -->\nw\n\n<!-- details -->\nd\n')).toThrow(/details block/);
+    expect(() => parseTidbit(base + '<!-- details -->\nd\n\n<!-- details -->\nd\n')).toThrow(/details block/);
   });
 });
 
@@ -186,9 +186,9 @@ updated: 2027-08-01T00:00:00Z
 Clouds form where the conditions are right
 
 `;
-    const g = parseGrain(file);
+    const g = parseTidbit(file);
     expect(g.status).toBe('draft');
     expect(g.history[0]).toEqual({ type: 'kindChange', at: '2027-08-01T00:00:00Z', from: 'insight', to: 'fact' });
-    expect(serializeGrain(g)).toBe(file);
+    expect(serializeTidbit(g)).toBe(file);
   });
 });

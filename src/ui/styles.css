@@ -671,45 +671,45 @@ kbd {
   gap: 6px;
 }
 
-/* ------------------------------------------------------------ grains */
+/* ------------------------------------------------------------ tidbits */
 
-.grain-text {
+.tidbit-text {
   white-space: pre-wrap;
   overflow-wrap: anywhere;
   font-family: var(--text-font);
   font-size: 1.12rem;
   line-height: 1.6;
 }
-.grain-tidbit,
-.grain-details {
+.tidbit-headline,
+.tidbit-details {
   white-space: pre-wrap;
   overflow-wrap: anywhere;
   font-family: var(--text-font);
 }
-.grain-tidbit {
+.tidbit-headline {
   font-size: 1.15rem;
   font-weight: 550;
   line-height: 1.45;
 }
-.grain-details {
+.tidbit-details {
   margin-top: 8px;
   font-size: 1rem;
   line-height: 1.6;
   color: var(--ink-2);
 }
-.revision-body.large .grain-tidbit {
+.revision-body.large .tidbit-headline {
   font-size: 1.4rem;
   line-height: 1.35;
 }
-.revision-body.large .grain-details {
+.revision-body.large .tidbit-details {
   margin-top: 12px;
   font-size: 1.05rem;
 }
-.revision-body.small .grain-tidbit {
+.revision-body.small .tidbit-headline {
   font-size: 1rem;
   color: var(--ink-2);
 }
-.revision-body.small .grain-details {
+.revision-body.small .tidbit-details {
   font-size: 0.92rem;
   margin-top: 4px;
 }
@@ -771,12 +771,12 @@ kbd {
 }
 
 .card-meta,
-.grain-row-meta,
+.tidbit-row-meta,
 .tl-head {
   font-family: var(--meta-font);
 }
 .card-meta,
-.grain-row-meta {
+.tidbit-row-meta {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
@@ -806,30 +806,30 @@ kbd {
   margin-left: auto;
 }
 
-.grain-list {
+.tidbit-list {
   display: flex;
   flex-direction: column;
 }
-.grain-row {
+.tidbit-row {
   display: block;
   padding: 14px 4px;
   border-bottom: 1px solid var(--line);
   color: inherit;
 }
-.grain-row:hover {
+.tidbit-row:hover {
   text-decoration: none;
   background: color-mix(in srgb, var(--surface-2) 50%, transparent);
 }
-.grain-row-title {
+.tidbit-row-title {
   font-weight: 600;
   font-family: var(--text-font);
 }
-:root[data-style='reflect'] .grain-row-title,
+:root[data-style='reflect'] .tidbit-row-title,
 :root[data-style='reflect'] .match-title {
   font-size: 1.05rem;
   font-family: var(--serif);
 }
-.grain-row-text {
+.tidbit-row-text {
   color: var(--ink-2);
   font-size: 0.92rem;
   display: -webkit-box;
@@ -838,17 +838,17 @@ kbd {
   overflow: hidden;
   margin: 2px 0 6px;
 }
-.grain-row.status-dormant,
-.grain-row.status-succeeded {
+.tidbit-row.status-dormant,
+.tidbit-row.status-succeeded {
   opacity: 0.65;
 }
 
 .card-title,
-.grain-title {
+.tidbit-title {
   font-family: var(--text-font);
   margin: 10px 0 6px;
 }
-.card .grain-text {
+.card .tidbit-text {
   margin-top: 10px;
 }
 .card-foot {
@@ -934,10 +934,10 @@ kbd {
   border: 1px dashed var(--line);
 }
 
-.grain-page {
+.tidbit-page {
   padding: 4px 0 8px;
 }
-.grain-page .grain-text {
+.tidbit-page .tidbit-text {
   font-size: 1.3rem;
 }
 .tags {
@@ -947,7 +947,7 @@ kbd {
   margin-top: 12px;
   font-size: 0.88rem;
 }
-.grain-actions {
+.tidbit-actions {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
@@ -1034,7 +1034,7 @@ kbd {
   color: var(--accent);
   font-weight: 600;
 }
-.tl-rev .grain-text {
+.tl-rev .tidbit-text {
   font-size: 1rem;
   color: var(--ink-2);
 }
@@ -1279,7 +1279,7 @@ kbd {
   border-top: 1px solid var(--line);
   background: color-mix(in srgb, var(--bg) 85%, transparent);
   backdrop-filter: blur(8px);
-  /* Soft edges, so grains drift in and out rather than appearing at a hard line. */
+  /* Soft edges, so tidbits drift in and out rather than appearing at a hard line. */
   mask-image: linear-gradient(to right, transparent, #000 8%, #000 92%, transparent);
   opacity: 0.85;
   transition: opacity 0.4s;

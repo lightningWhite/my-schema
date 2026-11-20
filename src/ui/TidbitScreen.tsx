@@ -1,38 +1,38 @@
-/** One grain: current text, metadata, actions and its full history. */
+/** One tidbit: current text, metadata, actions and its full history. */
 import { useState } from 'react';
-import { deleteGrain, editMeta, finishGrain, reactivateGrain, reaffirmGrain, reviseGrain, spinOffGrain } from '../app/actions';
-import { href, navigate, useNow, useGrains } from '../app/hooks';
+import { deleteTidbit, editMeta, finishTidbit, reactivateTidbit, reaffirmTidbit, reviseTidbit, spinOffTidbit } from '../app/actions';
+import { href, navigate, useNow, useTidbits } from '../app/hooks';
 import { allCategories, recentCategories } from '../core/categories';
 import { CONFIDENCE_LABEL, KIND_INFO } from '../core/kinds';
-import { connections, currentRevision, displayTitle } from '../core/grain';
-import type { HistoryEntry, KindChange, Revision, Grain } from '../core/types';
+import { connections, currentRevision, displayTitle } from '../core/tidbit';
+import type { HistoryEntry, KindChange, Revision, Tidbit } from '../core/types';
 import { longDate, monthYear, plural } from './format';
 import { CategoryPicker, Icon, KindBadge, KindChips, RevisionBody, TagsField } from './parts';
 import { RetirePanel } from './RetirePanel';
-import { GrainEditor } from './GrainEditor';
+import { TidbitEditor } from './TidbitEditor';
 
 type Mode = 'view' | 'revise' | 'meta' | 'retire' | 'delete' | 'practice';
 
-export function GrainScreen({ id }: { id: string }) {
-  const grains = useGrains();
+export function TidbitScreen({ id }: { id: string }) {
+  const tidbits = useTidbits();
   const now = useNow();
   const [mode, setMode] = useState<Mode>('view');
   const [pickKind, setPickKind] = useState(false);
-  if (!grains) return null;
-  const grain = grains.find((s) => s.id === id);
-  if (!grain) {
+  if (!tidbits) return null;
+  const tidbit = tidbits.find((s) => s.id === id);
+  if (!tidbit) {
     return (
       <div className="screen narrow">
         <p className="muted center">
-          This grain isn't in your schema. <a href="#/schema">Back to the schema</a>
+          This tidbit isn't in your schema. <a href="#/schema">Back to the schema</a>
         </p>
       </div>
     );
   }
-  const cur = currentRevision(grain);
-  const linked = (sid: string) => grains.find((s) => s.id === sid);
-  const successor = grain.links.find((l) => l.type === 'succeededBy');
-  const predecessor = grain.links.find((l) => l.type === 'succeeds');
+  const cur = currentRevision(tidbit);
+  const linked = (sid: string) => tidbits.find((s) => s.id === sid);
+  const successor = tidbit.links.find((l) => l.type === 'succeededBy');
+  const predecessor = tidbit.links.find((l) => l.type === 'succeeds');
 
   return (
     <div className="screen narrow">
@@ -45,71 +45,71 @@ export function GrainScreen({ id }: { id: string }) {
             className="kind-button"
             onClick={() => setPickKind(!pickKind)}
             aria-expanded={pickKind}
-            title={grain.kind ? 'Change kind' : 'Choose a kind'}
+            title={tidbit.kind ? 'Change kind' : 'Choose a kind'}
           >
-            {grain.kind ? <KindBadge kind={grain.kind} /> : <span className="kind-badge empty">+ Kind</span>}
+            {tidbit.kind ? <KindBadge kind={tidbit.kind} /> : <span className="kind-badge empty">+ Kind</span>}
           </button>
-          {grain.category ? (
-            <a className="cat" href={href({ name: 'schema', category: grain.category })}>
-              {grain.category}
+          {tidbit.category ? (
+            <a className="cat" href={href({ name: 'schema', category: tidbit.category })}>
+              {tidbit.category}
             </a>
           ) : (
             <span className="cat unsorted">Unsorted</span>
           )}
           {cur.confidence && <span className="confidence">{CONFIDENCE_LABEL[cur.confidence]}</span>}
-          {grain.status !== 'active' && grain.status !== 'draft' && <span className="status-label">{grain.status}</span>}
+          {tidbit.status !== 'active' && tidbit.status !== 'draft' && <span className="status-label">{tidbit.status}</span>}
         </div>
       </header>
 
       {pickKind && (
         <div className="kind-picker">
           <KindChips
-            value={grain.kind}
+            value={tidbit.kind}
             onChange={(k) => {
-              void editMeta(grain.id, { kind: k ?? null });
+              void editMeta(tidbit.id, { kind: k ?? null });
               setPickKind(false);
             }}
           />
-          {grain.kind && grain.status !== 'draft' && <p className="muted small">Switching kinds is noted in the history.</p>}
+          {tidbit.kind && tidbit.status !== 'draft' && <p className="muted small">Switching kinds is noted in the history.</p>}
         </div>
       )}
 
-      {grain.status === 'draft' && (
+      {tidbit.status === 'draft' && (
         <div className="banner draft-banner">
           <span>
             <strong>Draft.</strong> It stays out of reviews until you mark it done.
           </span>
-          <button className="button small primary" onClick={() => void finishGrain(grain.id)}>
+          <button className="button small primary" onClick={() => void finishTidbit(tidbit.id)}>
             Done
           </button>
         </div>
       )}
 
-      {(grain.status === 'dormant' || grain.status === 'succeeded') && (
+      {(tidbit.status === 'dormant' || tidbit.status === 'succeeded') && (
         <div className="banner">
-          {grain.status === 'dormant' ? 'Dormant' : 'Succeeded'} since {longDate(grain.retired?.at ?? grain.updated, now)}
-          {grain.retired?.why && <> — “{grain.retired.why}”</>}
-          {successor && linked(successor.grain) && (
+          {tidbit.status === 'dormant' ? 'Dormant' : 'Succeeded'} since {longDate(tidbit.retired?.at ?? tidbit.updated, now)}
+          {tidbit.retired?.why && <> — “{tidbit.retired.why}”</>}
+          {successor && linked(successor.tidbit) && (
             <>
               {' '}
-              · replaced by <a href={href({ name: 'grain', id: successor.grain })}>{displayTitle(linked(successor.grain)!)}</a>
+              · replaced by <a href={href({ name: 'tidbit', id: successor.tidbit })}>{displayTitle(linked(successor.tidbit)!)}</a>
             </>
           )}
         </div>
       )}
-      {predecessor && linked(predecessor.grain) && (
+      {predecessor && linked(predecessor.tidbit) && (
         <div className="banner subtle">
-          Replaces <a href={href({ name: 'grain', id: predecessor.grain })}>{displayTitle(linked(predecessor.grain)!)}</a>
+          Replaces <a href={href({ name: 'tidbit', id: predecessor.tidbit })}>{displayTitle(linked(predecessor.tidbit)!)}</a>
         </div>
       )}
 
-      <article className="grain-page">
-        {grain.title && <h1 className="grain-title">{grain.title}</h1>}
+      <article className="tidbit-page">
+        {tidbit.title && <h1 className="tidbit-title">{tidbit.title}</h1>}
         <RevisionBody rev={cur} size="large" />
-        {grain.source && <div className="source">— {grain.source}</div>}
-        {grain.tags.length > 0 && (
+        {tidbit.source && <div className="source">— {tidbit.source}</div>}
+        {tidbit.tags.length > 0 && (
           <div className="tags">
-            {grain.tags.map((t) => (
+            {tidbit.tags.map((t) => (
               <a key={t} className="tag" href={href({ name: 'schema', query: t })}>
                 #{t}
               </a>
@@ -119,8 +119,8 @@ export function GrainScreen({ id }: { id: string }) {
       </article>
 
       {mode === 'view' && (
-        <div className="grain-actions">
-          {grain.status === 'draft' ? (
+        <div className="tidbit-actions">
+          {tidbit.status === 'draft' ? (
             <>
               <button className="button primary" onClick={() => setMode('revise')}>
                 Revise
@@ -129,12 +129,12 @@ export function GrainScreen({ id }: { id: string }) {
                 Edit labels
               </button>
             </>
-          ) : grain.status === 'active' ? (
+          ) : tidbit.status === 'active' ? (
             <>
               <button className="button primary" onClick={() => setMode('revise')}>
                 Revise
               </button>
-              <button className="button" onClick={() => void reaffirmGrain(grain.id)} title="Record that you still hold this">
+              <button className="button" onClick={() => void reaffirmTidbit(tidbit.id)} title="Record that you still hold this">
                 Still true
               </button>
               <button className="button" onClick={() => setMode('meta')}>
@@ -143,7 +143,7 @@ export function GrainScreen({ id }: { id: string }) {
               <button className="button" onClick={() => setMode('retire')}>
                 Retire
               </button>
-              {grain.kind !== 'practice' && (
+              {tidbit.kind !== 'practice' && (
                 <button className="button" onClick={() => setMode('practice')} title="Start a habit or personal rule that grows out of this">
                   Make it a practice
                 </button>
@@ -151,7 +151,7 @@ export function GrainScreen({ id }: { id: string }) {
             </>
           ) : (
             <>
-              <button className="button" onClick={() => void reactivateGrain(grain.id)}>
+              <button className="button" onClick={() => void reactivateTidbit(tidbit.id)}>
                 Make active again
               </button>
               <button className="button" onClick={() => setMode('meta')}>
@@ -169,12 +169,12 @@ export function GrainScreen({ id }: { id: string }) {
         <div className="panel">
           <h3>New revision</h3>
           <p className="muted">The current text is kept in the history below.</p>
-          <GrainEditor
+          <TidbitEditor
             mode="revise"
             initial={{ text: cur.text, details: cur.details, confidence: cur.confidence }}
             onCancel={() => setMode('view')}
             onSave={async ({ text, details, confidence, why }) => {
-              await reviseGrain(grain.id, { text, details, confidence, why });
+              await reviseTidbit(tidbit.id, { text, details, confidence, why });
               setMode('view');
             }}
           />
@@ -183,39 +183,39 @@ export function GrainScreen({ id }: { id: string }) {
       {mode === 'practice' && (
         <div className="panel">
           <h3>Make it a practice</h3>
-          <p className="muted">What will you do because of this? Both grains stay, linked to each other.</p>
-          <GrainEditor
+          <p className="muted">What will you do because of this? Both tidbits stay, linked to each other.</p>
+          <TidbitEditor
             mode="new"
-            initial={{ text: '', kind: 'practice', category: grain.category, tags: grain.tags }}
-            categories={allCategories(grains)}
-            recentCategories={recentCategories(grains)}
+            initial={{ text: '', kind: 'practice', category: tidbit.category, tags: tidbit.tags }}
+            categories={allCategories(tidbits)}
+            recentCategories={recentCategories(tidbits)}
             saveLabel="Save practice"
             onCancel={() => setMode('view')}
             onSave={async (input) => {
-              const child = await spinOffGrain(grain.id, input);
+              const child = await spinOffTidbit(tidbit.id, input);
               setMode('view');
-              navigate({ name: 'grain', id: child.id });
+              navigate({ name: 'tidbit', id: child.id });
             }}
           />
         </div>
       )}
-      {mode === 'meta' && <MetaEditor grain={grain} grains={grains} onDone={() => setMode('view')} />}
+      {mode === 'meta' && <MetaEditor tidbit={tidbit} tidbits={tidbits} onDone={() => setMode('view')} />}
       {mode === 'retire' && (
         <RetirePanel
-          grain={grain}
-          categories={allCategories(grains)}
+          tidbit={tidbit}
+          categories={allCategories(tidbits)}
           onCancel={() => setMode('view')}
           onDone={(successorId) => {
             setMode('view');
-            if (successorId) navigate({ name: 'grain', id: successorId });
+            if (successorId) navigate({ name: 'tidbit', id: successorId });
           }}
         />
       )}
       {mode === 'delete' && (
         <div className="panel danger-panel">
-          <h3>Delete this grain?</h3>
+          <h3>Delete this tidbit?</h3>
           <p>
-            This removes the grain and its whole history from this device. It can't be undone. If you've outgrown it,{' '}
+            This removes the tidbit and its whole history from this device. It can't be undone. If you've outgrown it,{' '}
             <strong>Retire</strong> keeps the record of what you used to think.
           </p>
           <div className="editor-actions">
@@ -225,7 +225,7 @@ export function GrainScreen({ id }: { id: string }) {
             <button
               className="button danger"
               onClick={async () => {
-                await deleteGrain(grain.id);
+                await deleteTidbit(tidbit.id);
                 navigate({ name: 'schema' }, true);
               }}
             >
@@ -235,48 +235,48 @@ export function GrainScreen({ id }: { id: string }) {
         </div>
       )}
 
-      <Connections grain={grain} grains={grains} />
-      <History grain={grain} now={now} />
+      <Connections tidbit={tidbit} tidbits={tidbits} />
+      <History tidbit={tidbit} now={now} />
     </div>
   );
 }
 
-function MetaEditor({ grain, grains, onDone }: { grain: Grain; grains: Grain[]; onDone: () => void }) {
-  const [title, setTitle] = useState(grain.title ?? '');
-  const [source, setSource] = useState(grain.source ?? '');
-  const others = grains.filter((s) => s.id !== grain.id);
+function MetaEditor({ tidbit, tidbits, onDone }: { tidbit: Tidbit; tidbits: Tidbit[]; onDone: () => void }) {
+  const [title, setTitle] = useState(tidbit.title ?? '');
+  const [source, setSource] = useState(tidbit.source ?? '');
+  const others = tidbits.filter((s) => s.id !== tidbit.id);
   return (
     <div className="panel">
       <h3>Labels</h3>
-      <p className="muted">Labels change in place. To change what the grain says, revise it.</p>
-      {grain.title !== undefined && (
+      <p className="muted">Labels change in place. To change what the tidbit says, revise it.</p>
+      {tidbit.title !== undefined && (
         <label className="field">
-          <span className="field-label">Title (older grains only — clear it to use the tidbit as the headline)</span>
-          <input value={title} onChange={(e) => setTitle(e.target.value)} onBlur={() => void editMeta(grain.id, { title })} />
+          <span className="field-label">Title (older tidbits only — clear it to use the tidbit as the headline)</span>
+          <input value={title} onChange={(e) => setTitle(e.target.value)} onBlur={() => void editMeta(tidbit.id, { title })} />
         </label>
       )}
       <div className="field-label">Kind</div>
-      <KindChips value={grain.kind} onChange={(k) => void editMeta(grain.id, { kind: k ?? null })} />
+      <KindChips value={tidbit.kind} onChange={(k) => void editMeta(tidbit.id, { kind: k ?? null })} />
       <div className="field-label">Category</div>
       <CategoryPicker
-        value={grain.category}
+        value={tidbit.category}
         recent={recentCategories(others)}
         all={allCategories(others)}
-        onChange={(c) => void editMeta(grain.id, { category: c ?? null })}
+        onChange={(c) => void editMeta(tidbit.id, { category: c ?? null })}
       />
       <label className="field">
         <span className="field-label">Tags</span>
-        <TagsField value={grain.tags} onChange={(tags) => void editMeta(grain.id, { tags })} />
+        <TagsField value={tidbit.tags} onChange={(tags) => void editMeta(tidbit.id, { tags })} />
       </label>
       <label className="field">
         <span className="field-label">Source</span>
-        <input value={source} onChange={(e) => setSource(e.target.value)} onBlur={() => void editMeta(grain.id, { source })} placeholder={grain.kind === 'quote' ? 'Who said it?' : 'Optional'} />
+        <input value={source} onChange={(e) => setSource(e.target.value)} onBlur={() => void editMeta(tidbit.id, { source })} placeholder={tidbit.kind === 'quote' ? 'Who said it?' : 'Optional'} />
       </label>
       <div className="editor-actions">
         <button
           className="button primary"
           onClick={async () => {
-            await editMeta(grain.id, { title, source });
+            await editMeta(tidbit.id, { title, source });
             onDone();
           }}
         >
@@ -311,8 +311,8 @@ function groupHistory(history: HistoryEntry[]): Group[] {
   return out;
 }
 
-function History({ grain, now }: { grain: Grain; now: string }) {
-  const groups = groupHistory(grain.history);
+function History({ tidbit, now }: { tidbit: Tidbit; now: string }) {
+  const groups = groupHistory(tidbit.history);
   const revCount = groups.filter((g) => g.type === 'revision').length;
   return (
     <section className="history" aria-label="History">
@@ -351,18 +351,18 @@ function History({ grain, now }: { grain: Grain; now: string }) {
   );
 }
 
-/** Grains linked to this one, either direction. Replacements are shown in the banners above instead. */
-function Connections({ grain, grains }: { grain: Grain; grains: Grain[] }) {
-  const list = connections(grain, grains).filter((c) => c.label !== 'Replaces' && c.label !== 'Replaced by');
+/** Tidbits linked to this one, either direction. Replacements are shown in the banners above instead. */
+function Connections({ tidbit, tidbits }: { tidbit: Tidbit; tidbits: Tidbit[] }) {
+  const list = connections(tidbit, tidbits).filter((c) => c.label !== 'Replaces' && c.label !== 'Replaced by');
   if (!list.length) return null;
   return (
-    <section className="connections" aria-label="Connected grains">
+    <section className="connections" aria-label="Connected tidbits">
       <h2>Connected</h2>
       {list.map((c) => (
-        <a key={c.label + c.grain.id} className="connection" href={href({ name: 'grain', id: c.grain.id })}>
+        <a key={c.label + c.tidbit.id} className="connection" href={href({ name: 'tidbit', id: c.tidbit.id })}>
           <span className="connection-label">{c.label}</span>
-          <span className="connection-title">{displayTitle(c.grain)}</span>
-          <KindBadge kind={c.grain.kind} />
+          <span className="connection-title">{displayTitle(c.tidbit)}</span>
+          <KindBadge kind={c.tidbit.kind} />
         </a>
       ))}
     </section>

@@ -8,11 +8,11 @@ life — observations, lessons, values, practices, convictions, plain practical
 know-how — and to be reminded of them, so they keep shaping how you think and
 decide.
 
-Each one is a **grain**, as in a grain of truth. Grains get filed, resurfaced now and then so they stay alive in your
+Each one is a **tidbit**. Tidbits get filed, resurfaced now and then so they stay alive in your
 mind, and **revised** as you learn more. Old versions are never lost, so your
 schema becomes a record of how your thinking changed over time.
 
-If you want, you can publish some grains. Other people can browse them and
+If you want, you can publish some tidbits. Other people can browse them and
 **plant** them in their own schemas, then grow them their own way, with a link back
 to where each one came from.
 

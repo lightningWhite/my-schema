@@ -1,24 +1,24 @@
 /**
  * The front door (docs/design.md §6.2): one big input, focused on open.
  * Type, press Enter, done. Chips for kind / category / confidence appear for
- * the grain just saved; ignore them and it stays Unsorted. While typing,
- * matching grains already in the schema show below, so a near-duplicate can
+ * the tidbit just saved; ignore them and it stays Unsorted. While typing,
+ * matching tidbits already in the schema show below, so a near-duplicate can
  * become a revision instead.
  */
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { capture, editMeta, finishGrain, reviseGrain } from '../app/actions';
-import { href, useGrains, useNow } from '../app/hooks';
+import { capture, editMeta, finishTidbit, reviseTidbit } from '../app/actions';
+import { href, useTidbits, useNow } from '../app/hooks';
 import { allCategories, recentCategories } from '../core/categories';
 import { KIND_INFO, suggestKind } from '../core/kinds';
-import { similarGrains } from '../core/search';
-import { currentRevision, displayTitle, splitTidbit, TIDBIT_SOFT_LENGTH } from '../core/grain';
-import type { Kind, Grain } from '../core/types';
-import { GrainEditor } from './GrainEditor';
+import { similarTidbits } from '../core/search';
+import { currentRevision, displayTitle, splitTidbit, TIDBIT_SOFT_LENGTH } from '../core/tidbit';
+import type { Kind, Tidbit } from '../core/types';
+import { TidbitEditor } from './TidbitEditor';
 import { PassingStrip } from './PassingStrip';
 import { CategoryPicker, ConfidenceChips, Icon, KindBadge, KindChips, Logo } from './parts';
 
 export function CaptureScreen() {
-  const grains = useGrains() ?? [];
+  const tidbits = useTidbits() ?? [];
   const now = useNow();
   const [text, setText] = useState('');
   const [details, setDetails] = useState('');
@@ -50,19 +50,19 @@ export function CaptureScreen() {
     requestAnimationFrame(() => detailsRef.current?.focus());
   };
 
-  const matches = useMemo(() => (text.trim().length >= 3 ? similarGrains(grains, text, 4) : []), [grains, text]);
-  const saved = justSaved ? grains.find((s) => s.id === justSaved) : undefined;
+  const matches = useMemo(() => (text.trim().length >= 3 ? similarTidbits(tidbits, text, 4) : []), [tidbits, text]);
+  const saved = justSaved ? tidbits.find((s) => s.id === justSaved) : undefined;
 
   const save = async () => {
     const t = text.trim();
     if (!t) return;
     const kind = suggestKind(t);
     // Quick captures are drafts until looked over in Organize.
-    const grain = await capture({ text: t, details, kind, draft: true });
+    const tidbit = await capture({ text: t, details, kind, draft: true });
     setText('');
     setDetails('');
     setShowDetails(false);
-    setJustSaved(grain.id);
+    setJustSaved(tidbit.id);
     inputRef.current?.focus();
   };
 
@@ -73,21 +73,21 @@ export function CaptureScreen() {
           <button className="icon-button" onClick={() => setExpanded(false)} aria-label="Back">
             <Icon name="back" />
           </button>
-          <h1>New grain</h1>
+          <h1>New tidbit</h1>
         </header>
-        <GrainEditor
+        <TidbitEditor
           mode="new"
           initial={{ text, details, kind: suggestKind(text) }}
-          categories={allCategories(grains)}
-          recentCategories={recentCategories(grains)}
+          categories={allCategories(tidbits)}
+          recentCategories={recentCategories(tidbits)}
           onCancel={() => setExpanded(false)}
           onSave={async (input) => {
-            const grain = await capture(input);
+            const tidbit = await capture(input);
             setText('');
             setDetails('');
             setShowDetails(false);
             setExpanded(false);
-            setJustSaved(grain.id);
+            setJustSaved(tidbit.id);
           }}
         />
       </div>
@@ -95,7 +95,7 @@ export function CaptureScreen() {
   }
 
   return (
-    <div className={`screen capture${grains.length ? ' has-passing' : ''}`}>
+    <div className={`screen capture${tidbits.length ? ' has-passing' : ''}`}>
       <div className="capture-hero">
         <div className="brand">
           <Logo size={34} />
@@ -116,7 +116,7 @@ export function CaptureScreen() {
             rows={1}
             value={text}
             placeholder="Add a tidbit"
-            aria-label="New grain"
+            aria-label="New tidbit"
             onChange={(e) => {
               setText(e.target.value);
               if (justSaved) setJustSaved(null);
@@ -144,7 +144,7 @@ export function CaptureScreen() {
           <button type="button" className="icon-button subtle" onClick={() => setExpanded(true)} aria-label="Open full editor" title="Full editor">
             <Icon name="expand" size={18} />
           </button>
-          <button type="submit" className="icon-button primary" disabled={!text.trim()} aria-label="Save grain">
+          <button type="submit" className="icon-button primary" disabled={!text.trim()} aria-label="Save tidbit">
             <Icon name="send" />
           </button>
           </div>
@@ -192,39 +192,39 @@ export function CaptureScreen() {
           About Schema
         </a>
 
-        {saved && <SavedCard grain={saved} grains={grains} onDone={() => setJustSaved(null)} />}
+        {saved && <SavedCard tidbit={saved} tidbits={tidbits} onDone={() => setJustSaved(null)} />}
 
         {matches.length > 0 && (
-          <section className="matches" aria-label="Similar grains already in your schema">
+          <section className="matches" aria-label="Similar tidbits already in your schema">
             <h2>Already in your schema?</h2>
             {matches.map((m) => (
-              <MatchRow key={m.id} grain={m} draft={text} onRevised={() => setText('')} />
+              <MatchRow key={m.id} tidbit={m} draft={text} onRevised={() => setText('')} />
             ))}
           </section>
         )}
       </div>
-      <PassingStrip grains={grains} now={now} quiet={text.trim().length > 0 || showDetails} exclude={justSaved ? [justSaved] : []} />
+      <PassingStrip tidbits={tidbits} now={now} quiet={text.trim().length > 0 || showDetails} exclude={justSaved ? [justSaved] : []} />
     </div>
   );
 }
 
-/** Quick filing for the grain just captured. Every tap saves immediately. */
-function SavedCard({ grain, grains, onDone }: { grain: Grain; grains: Grain[]; onDone: () => void }) {
-  const confidence = currentRevision(grain).confidence;
-  const showConfidence = !grain.kind || KIND_INFO[grain.kind].hasConfidence;
-  const setKind = (kind: Kind | undefined) => void editMeta(grain.id, { kind: kind ?? null });
+/** Quick filing for the tidbit just captured. Every tap saves immediately. */
+function SavedCard({ tidbit, tidbits, onDone }: { tidbit: Tidbit; tidbits: Tidbit[]; onDone: () => void }) {
+  const confidence = currentRevision(tidbit).confidence;
+  const showConfidence = !tidbit.kind || KIND_INFO[tidbit.kind].hasConfidence;
+  const setKind = (kind: Kind | undefined) => void editMeta(tidbit.id, { kind: kind ?? null });
   return (
     <section className="saved-card" aria-live="polite">
       <div className="saved-head">
         <span className="saved-check">
           <Icon name="check" size={16} />
         </span>
-        <span className="saved-title">{grain.status === 'draft' ? 'Saved as a draft' : 'Saved'}</span>
-        <a className="link" href={href({ name: 'grain', id: grain.id })}>
+        <span className="saved-title">{tidbit.status === 'draft' ? 'Saved as a draft' : 'Saved'}</span>
+        <a className="link" href={href({ name: 'tidbit', id: tidbit.id })}>
           Open
         </a>
-        {grain.status === 'draft' && (
-          <button className="button small" onClick={() => void finishGrain(grain.id)} title="It's ready as it is — skip Organize">
+        {tidbit.status === 'draft' && (
+          <button className="button small" onClick={() => void finishTidbit(tidbit.id)} title="It's ready as it is — skip Organize">
             Done
           </button>
         )}
@@ -232,22 +232,22 @@ function SavedCard({ grain, grains, onDone }: { grain: Grain; grains: Grain[]; o
           <Icon name="close" size={16} />
         </button>
       </div>
-      <div className="saved-quote">{displayTitle(grain)}</div>
+      <div className="saved-quote">{displayTitle(tidbit)}</div>
       <div className="field-label">Kind</div>
-      <KindChips value={grain.kind} onChange={setKind} />
+      <KindChips value={tidbit.kind} onChange={setKind} />
       <div className="field-label">Category</div>
       <CategoryPicker
-        value={grain.category}
-        recent={recentCategories(grains.filter((s) => s.id !== grain.id))}
-        all={allCategories(grains)}
-        onChange={(c) => void editMeta(grain.id, { category: c ?? null })}
+        value={tidbit.category}
+        recent={recentCategories(tidbits.filter((s) => s.id !== tidbit.id))}
+        all={allCategories(tidbits)}
+        onChange={(c) => void editMeta(tidbit.id, { category: c ?? null })}
       />
       {showConfidence && (
         <>
           <div className="field-label">Confidence</div>
           <ConfidenceChips
             value={confidence}
-            onChange={(c) => void reviseGrain(grain.id, { text: currentRevision(grain).text, details: currentRevision(grain).details ?? '', confidence: c })}
+            onChange={(c) => void reviseTidbit(tidbit.id, { text: currentRevision(tidbit).text, details: currentRevision(tidbit).details ?? '', confidence: c })}
           />
         </>
       )}
@@ -255,15 +255,15 @@ function SavedCard({ grain, grains, onDone }: { grain: Grain; grains: Grain[]; o
   );
 }
 
-function MatchRow({ grain, draft, onRevised }: { grain: Grain; draft: string; onRevised: () => void }) {
+function MatchRow({ tidbit, draft, onRevised }: { tidbit: Tidbit; draft: string; onRevised: () => void }) {
   const [confirm, setConfirm] = useState(false);
   return (
     <div className="match-row">
-      <a href={href({ name: 'grain', id: grain.id })} className="match-main">
-        <div className="match-title">{displayTitle(grain)}</div>
-        <div className="grain-row-meta">
-          <KindBadge kind={grain.kind} />
-          <span className="cat">{grain.category ?? 'Unsorted'}</span>
+      <a href={href({ name: 'tidbit', id: tidbit.id })} className="match-main">
+        <div className="match-title">{displayTitle(tidbit)}</div>
+        <div className="tidbit-row-meta">
+          <KindBadge kind={tidbit.kind} />
+          <span className="cat">{tidbit.category ?? 'Unsorted'}</span>
         </div>
       </a>
       {confirm ? (
@@ -271,9 +271,9 @@ function MatchRow({ grain, draft, onRevised }: { grain: Grain; draft: string; on
           <button
             className="button small primary"
             onClick={async () => {
-              await reviseGrain(grain.id, { text: draft, confidence: currentRevision(grain).confidence });
+              await reviseTidbit(tidbit.id, { text: draft, confidence: currentRevision(tidbit).confidence });
               onRevised();
-              location.hash = href({ name: 'grain', id: grain.id });
+              location.hash = href({ name: 'tidbit', id: tidbit.id });
             }}
           >
             Replace its text
@@ -283,7 +283,7 @@ function MatchRow({ grain, draft, onRevised }: { grain: Grain; draft: string; on
           </button>
         </div>
       ) : (
-        <button className="button small" onClick={() => setConfirm(true)} title="Save what you typed as a new revision of this grain">
+        <button className="button small" onClick={() => setConfirm(true)} title="Save what you typed as a new revision of this tidbit">
           Revise this
         </button>
       )}

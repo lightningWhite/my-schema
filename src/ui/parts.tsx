@@ -1,7 +1,7 @@
 import { useId, useState, type ReactNode } from 'react';
 import { CONFIDENCE_LABEL, KIND_INFO } from '../core/kinds';
-import { currentRevision, displayTitle } from '../core/grain';
-import { CONFIDENCES, KINDS, type Confidence, type Kind, type Grain, type Revision } from '../core/types';
+import { currentRevision, displayTitle } from '../core/tidbit';
+import { CONFIDENCES, KINDS, type Confidence, type Kind, type Tidbit, type Revision } from '../core/types';
 import { href } from '../app/hooks';
 import { relativeDate } from './format';
 
@@ -158,37 +158,37 @@ export function TagsField({ value, onChange }: { value: string[]; onChange: (t: 
   );
 }
 
-// ---------------------------------------------------------------- grains
+// ---------------------------------------------------------------- tidbits
 
-export function GrainRow({ grain, now }: { grain: Grain; now: string }) {
-  const title = displayTitle(grain);
-  const cur = currentRevision(grain);
-  // Under the headline: the details, or (for older grains) whatever follows it.
-  const rest = cur.details ?? (grain.title ? cur.text : cur.text.slice(cur.text.indexOf(title) + title.length).trim());
+export function TidbitRow({ tidbit, now }: { tidbit: Tidbit; now: string }) {
+  const title = displayTitle(tidbit);
+  const cur = currentRevision(tidbit);
+  // Under the headline: the details, or (for older tidbits) whatever follows it.
+  const rest = cur.details ?? (tidbit.title ? cur.text : cur.text.slice(cur.text.indexOf(title) + title.length).trim());
   return (
-    <a className={`grain-row status-${grain.status}`} href={href({ name: 'grain', id: grain.id })}>
-      <div className="grain-row-title">{title}</div>
-      {rest && <div className="grain-row-text">{rest}</div>}
-      <div className="grain-row-meta">
-        <KindBadge kind={grain.kind} />
-        {grain.category ? <span className="cat">{grain.category}</span> : <span className="cat unsorted">Unsorted</span>}
-        {grain.status !== 'active' && <span className="status-label">{grain.status}</span>}
-        <span className="when">{relativeDate(grain.updated, now)}</span>
+    <a className={`tidbit-row status-${tidbit.status}`} href={href({ name: 'tidbit', id: tidbit.id })}>
+      <div className="tidbit-row-title">{title}</div>
+      {rest && <div className="tidbit-row-text">{rest}</div>}
+      <div className="tidbit-row-meta">
+        <KindBadge kind={tidbit.kind} />
+        {tidbit.category ? <span className="cat">{tidbit.category}</span> : <span className="cat unsorted">Unsorted</span>}
+        {tidbit.status !== 'active' && <span className="status-label">{tidbit.status}</span>}
+        <span className="when">{relativeDate(tidbit.updated, now)}</span>
       </div>
     </a>
   );
 }
 
-export function GrainText({ text }: { text: string }) {
-  return <div className="grain-text">{text}</div>;
+export function TidbitText({ text }: { text: string }) {
+  return <div className="tidbit-text">{text}</div>;
 }
 
 /** A revision as it's read: the tidbit, then its details if it has any. */
 export function RevisionBody({ rev, size = 'normal' }: { rev: Revision; size?: 'normal' | 'large' | 'small' }) {
   return (
     <div className={`revision-body ${size}`}>
-      <div className="grain-tidbit">{rev.text}</div>
-      {rev.details && <div className="grain-details">{rev.details}</div>}
+      <div className="tidbit-headline">{rev.text}</div>
+      {rev.details && <div className="tidbit-details">{rev.details}</div>}
     </div>
   );
 }

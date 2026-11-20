@@ -2,13 +2,13 @@
  * Search over a schema, used both by the Schema screen and by the capture box's
  * "you already have something like this" suggestions. Plain word matching,
  * accent- and case-insensitive; good enough for a personal schema of a few
- * thousand grains, and needs no index.
+ * thousand tidbits, and needs no index.
  */
-import { currentRevision, displayTitle } from './grain';
-import type { Grain } from './types';
+import { currentRevision, displayTitle } from './tidbit';
+import type { Tidbit } from './types';
 
 export interface SearchHit {
-  grain: Grain;
+  tidbit: Tidbit;
   score: number;
 }
 
@@ -30,18 +30,18 @@ export function words(s: string): string[] {
 }
 
 /**
- * Grains matching every query word (prefix match on the last word, so results
+ * Tidbits matching every query word (prefix match on the last word, so results
  * update while typing). Title and tag matches outrank body matches.
  */
-export function searchGrains(grains: Grain[], query: string, limit = 50): SearchHit[] {
+export function searchTidbits(tidbits: Tidbit[], query: string, limit = 50): SearchHit[] {
   const q = words(query);
   if (!q.length) return [];
   const last = q.length - 1;
   const hits: SearchHit[] = [];
-  for (const grain of grains) {
-    const title = words(displayTitle(grain));
-    const meta = words([grain.category ?? '', ...grain.tags, grain.source ?? ''].join(' '));
-    const cur = currentRevision(grain);
+  for (const tidbit of tidbits) {
+    const title = words(displayTitle(tidbit));
+    const meta = words([tidbit.category ?? '', ...tidbit.tags, tidbit.source ?? ''].join(' '));
+    const cur = currentRevision(tidbit);
     const body = words(`${cur.text} ${cur.details ?? ''}`);
     let score = 0;
     let all = true;
@@ -56,30 +56,30 @@ export function searchGrains(grains: Grain[], query: string, limit = 50): Search
       score += s;
     }
     if (all) {
-      if (grain.status !== 'active') score *= 0.5;
-      hits.push({ grain, score });
+      if (tidbit.status !== 'active') score *= 0.5;
+      hits.push({ tidbit, score });
     }
   }
-  hits.sort((a, b) => b.score - a.score || b.grain.updated.localeCompare(a.grain.updated));
+  hits.sort((a, b) => b.score - a.score || b.tidbit.updated.localeCompare(a.tidbit.updated));
   return hits.slice(0, limit);
 }
 
 /**
- * Grains similar to a draft being typed: at least half of the draft's words
- * (and at least two) appear in the grain. Powers "already in your schema?".
+ * Tidbits similar to a draft being typed: at least half of the draft's words
+ * (and at least two) appear in the tidbit. Powers "already in your schema?".
  */
-export function similarGrains(grains: Grain[], draft: string, limit = 3): Grain[] {
+export function similarTidbits(tidbits: Tidbit[], draft: string, limit = 3): Tidbit[] {
   const q = [...new Set(words(draft))];
-  if (q.length < 2) return searchGrains(grains, draft, limit).map((h) => h.grain);
+  if (q.length < 2) return searchTidbits(tidbits, draft, limit).map((h) => h.tidbit);
   const need = Math.max(2, Math.ceil(q.length / 2));
-  return grains
-    .map((grain) => {
-      const ws = new Set(words(`${displayTitle(grain)} ${currentRevision(grain).text} ${grain.tags.join(' ')}`));
+  return tidbits
+    .map((tidbit) => {
+      const ws = new Set(words(`${displayTitle(tidbit)} ${currentRevision(tidbit).text} ${tidbit.tags.join(' ')}`));
       const n = q.filter((w, i) => ws.has(w) || (i === q.length - 1 && [...ws].some((x) => x.startsWith(w)))).length;
-      return { grain, n };
+      return { tidbit, n };
     })
     .filter((x) => x.n >= need)
-    .sort((a, b) => b.n - a.n || b.grain.updated.localeCompare(a.grain.updated))
+    .sort((a, b) => b.n - a.n || b.tidbit.updated.localeCompare(a.tidbit.updated))
     .slice(0, limit)
-    .map((x) => x.grain);
+    .map((x) => x.tidbit);
 }

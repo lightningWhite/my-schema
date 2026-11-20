@@ -1,17 +1,17 @@
 import { useLiveQuery } from 'dexie-react-hooks';
 import { useEffect, useState } from 'react';
 import type { ReviewState } from '../core/review';
-import type { Grain } from '../core/types';
+import type { Tidbit } from '../core/types';
 import { DEFAULT_SETTINGS, type Settings } from '../store/db';
 import { db } from './actions';
 
-/** All grains, live. `undefined` while loading. */
-export function useGrains(): Grain[] | undefined {
-  return useLiveQuery(() => db.grains.toArray(), []);
+/** All tidbits, live. `undefined` while loading. */
+export function useTidbits(): Tidbit[] | undefined {
+  return useLiveQuery(() => db.tidbits.toArray(), []);
 }
 
-export function useGrain(id: string): Grain | null | undefined {
-  return useLiveQuery(async () => (await db.grains.get(id)) ?? null, [id]);
+export function useTidbit(id: string): Tidbit | null | undefined {
+  return useLiveQuery(async () => (await db.tidbits.get(id)) ?? null, [id]);
 }
 
 export function useReviewState(): ReviewState | undefined {
@@ -40,7 +40,7 @@ export type Route =
   | { name: 'about' }
   | { name: 'review' }
   | { name: 'schema'; category?: string; query?: string }
-  | { name: 'grain'; id: string }
+  | { name: 'tidbit'; id: string }
   | { name: 'settings' };
 
 export function parseRoute(hash: string): Route {
@@ -57,8 +57,10 @@ export function parseRoute(hash: string): Route {
       return { name: 'review' };
     case 'schema':
       return { name: 'schema', category: params.get('c') ?? undefined, query: params.get('q') ?? undefined };
-    case 'grain':
-      return arg ? { name: 'grain', id: decodeURIComponent(arg) } : { name: 'schema' };
+    case 'tidbit':
+    case 'grain': // old links
+    case 'seed':
+      return arg ? { name: 'tidbit', id: decodeURIComponent(arg) } : { name: 'schema' };
     case 'settings':
       return { name: 'settings' };
     default:
@@ -70,8 +72,8 @@ export function href(route: Route): string {
   switch (route.name) {
     case 'capture':
       return '#/';
-    case 'grain':
-      return `#/grain/${encodeURIComponent(route.id)}`;
+    case 'tidbit':
+      return `#/tidbit/${encodeURIComponent(route.id)}`;
     case 'schema': {
       const p = new URLSearchParams();
       if (route.category) p.set('c', route.category);

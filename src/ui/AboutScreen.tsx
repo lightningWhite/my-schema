@@ -45,7 +45,7 @@ export function AboutScreen() {
           <dt>Capture</dt>
           <dd>
             Type a tidbit and press Enter. That's all it takes. Need more room? Shift+Enter adds details under it — the context, the why, the
-            example. Each one becomes a grain, as in a grain of truth, and starts as a draft.
+            example. Each tidbit starts as a draft.
           </dd>
           <dt>Organize</dt>
           <dd>
@@ -54,20 +54,20 @@ export function AboutScreen() {
           </dd>
           <dt>Review</dt>
           <dd>
-            A few grains come back each day. Mark them <strong>Still true</strong>, <strong>revise</strong> them, or <strong>retire</strong> them.
+            A few tidbits come back each day. Mark them <strong>Still true</strong>, <strong>revise</strong> them, or <strong>retire</strong> them.
             The more often you reaffirm one, the less often it returns — but values and practices never drift away entirely.
           </dd>
           <dt>In passing</dt>
-          <dd>Past grains drift along the bottom of the home screen, in case one catches your eye. No need to do anything with them.</dd>
+          <dd>Past tidbits drift along the bottom of the home screen, in case one catches your eye. No need to do anything with them.</dd>
           <dt>Your schema</dt>
-          <dd>Browse everything by category and kind, search it, and see each grain's history.</dd>
+          <dd>Browse everything by category and kind, search it, and see each tidbit's history.</dd>
         </dl>
       </section>
 
       <section>
-        <h2>Grains change</h2>
+        <h2>Tidbits change</h2>
         <p>
-          Nothing is overwritten. <strong>Revise</strong> a grain when you see the same idea more sharply; the old wording stays in its history,
+          Nothing is overwritten. <strong>Revise</strong> a tidbit when you see the same idea more sharply; the old wording stays in its history,
           with a note on why it changed. If it turns out to be a different kind of thing — you noticed something, then learned it's a fact —
           change its kind, and that's noted too. <strong>Retire</strong> it when you've outgrown it — it goes dormant, or a new idea succeeds it — and
           it stays in your schema as a record of what you used to think. Over time, how your thinking changed becomes part of the story.
@@ -75,7 +75,7 @@ export function AboutScreen() {
       </section>
 
       <section>
-        <h2>Kinds of grains</h2>
+        <h2>Kinds of tidbits</h2>
         <ul className="about-kinds">
           {KINDS.map((k) => (
             <li key={k}>
@@ -93,12 +93,12 @@ export function AboutScreen() {
       <section>
         <h2>Your data</h2>
         <p>
-          Your grains live on this device. There's no account, no server, no tracking. Export a backup from Settings any time — it's a zip of plain
+          Your tidbits live on this device. There's no account, no server, no tracking. Export a backup from Settings any time — it's a zip of plain
           Markdown files you can read without the app.
         </p>
         <p className="muted">
           Coming next: syncing to your own private GitHub repository, so your schema is backed up and on every device. Later, optionally, sharing
-          some grains and planting other people's in yours.
+          some tidbits and planting other people's in yours.
         </p>
       </section>
 

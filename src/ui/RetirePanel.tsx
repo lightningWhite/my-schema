@@ -1,10 +1,10 @@
-/** Retiring a grain: let it go dormant, or replace it with a different idea. */
+/** Retiring a tidbit: let it go dormant, or replace it with a different idea. */
 import { useState } from 'react';
-import { dormantGrain, succeedGrain } from '../app/actions';
-import type { Grain } from '../core/types';
-import { GrainEditor } from './GrainEditor';
+import { dormantTidbit, succeedTidbit } from '../app/actions';
+import type { Tidbit } from '../core/types';
+import { TidbitEditor } from './TidbitEditor';
 
-export function RetirePanel({ grain, categories, onDone, onCancel }: { grain: Grain; categories: string[]; onDone: (successorId?: string) => void; onCancel: () => void }) {
+export function RetirePanel({ tidbit, categories, onDone, onCancel }: { tidbit: Tidbit; categories: string[]; onDone: (successorId?: string) => void; onCancel: () => void }) {
   const [mode, setMode] = useState<'choose' | 'dormant' | 'succeed'>('choose');
   const [why, setWhy] = useState('');
 
@@ -12,15 +12,15 @@ export function RetirePanel({ grain, categories, onDone, onCancel }: { grain: Gr
     return (
       <div className="panel">
         <h3>Replace it with a new idea</h3>
-        <p className="muted">The old grain stays in your schema, marked as succeeded and linked to the new one.</p>
-        <GrainEditor
+        <p className="muted">The old tidbit stays in your schema, marked as succeeded and linked to the new one.</p>
+        <TidbitEditor
           mode="succeed"
-          initial={{ text: '', kind: grain.kind, category: grain.category, tags: grain.tags }}
+          initial={{ text: '', kind: tidbit.kind, category: tidbit.category, tags: tidbit.tags }}
           categories={categories}
           saveLabel="Save new idea"
           onCancel={() => setMode('choose')}
           onSave={async ({ why: w, ...input }) => {
-            const successor = await succeedGrain(grain.id, input, w);
+            const successor = await succeedTidbit(tidbit.id, input, w);
             onDone(successor.id);
           }}
         />
@@ -34,7 +34,7 @@ export function RetirePanel({ grain, categories, onDone, onCancel }: { grain: Gr
         className="panel"
         onSubmit={async (e) => {
           e.preventDefault();
-          await dormantGrain(grain.id, why);
+          await dormantTidbit(tidbit.id, why);
           onDone();
         }}
       >
@@ -58,7 +58,7 @@ export function RetirePanel({ grain, categories, onDone, onCancel }: { grain: Gr
 
   return (
     <div className="panel">
-      <h3>Retire this grain</h3>
+      <h3>Retire this tidbit</h3>
       <div className="choice-list">
         <button className="choice" onClick={() => setMode('succeed')}>
           <strong>A different idea replaces it</strong>

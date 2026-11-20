@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   addLink,
-  createGrain,
+  createTidbit,
   currentRevision,
   displayTitle,
   goDormant,
@@ -19,13 +19,13 @@ import {
   revise,
   succeed,
   updateMeta,
-} from './grain';
+} from './tidbit';
 import { testCtx } from './testing';
 
-describe('createGrain', () => {
-  it('makes an active, unsorted grain with one revision', () => {
+describe('createTidbit', () => {
+  it('makes an active, unsorted tidbit with one revision', () => {
     const ctx = testCtx();
-    const s = createGrain(ctx, { text: '  Water deeply twice a week.  \n\n' });
+    const s = createTidbit(ctx, { text: '  Water deeply twice a week.  \n\n' });
     expect(s.status).toBe('active');
     expect(isUnsorted(s)).toBe(true);
     expect(s.history).toEqual([{ type: 'revision', at: '2026-01-01T00:00:00.000Z', text: 'Water deeply twice a week.' }]);
@@ -34,7 +34,7 @@ describe('createGrain', () => {
   });
 
   it('normalizes category and tags, and drops blank optionals', () => {
-    const s = createGrain(testCtx(), {
+    const s = createTidbit(testCtx(), {
       text: 'x',
       title: '   ',
       category: ' Garden / Tomatoes/ ',
@@ -47,15 +47,15 @@ describe('createGrain', () => {
     expect('source' in s).toBe(false);
   });
 
-  it('refuses an empty grain', () => {
-    expect(() => createGrain(testCtx(), { text: ' \n ' })).toThrow();
+  it('refuses an empty tidbit', () => {
+    expect(() => createTidbit(testCtx(), { text: ' \n ' })).toThrow();
   });
 });
 
 describe('revise', () => {
   it('adds a revision on top and keeps the old one', () => {
     const ctx = testCtx();
-    const s1 = createGrain(ctx, { text: 'v1', confidence: 'leaning' });
+    const s1 = createTidbit(ctx, { text: 'v1', confidence: 'leaning' });
     ctx.advance(1000);
     const s2 = revise(ctx, s1, { text: 'v2', confidence: 'confident', why: 'learned more' });
     expect(s2.history).toHaveLength(2);
@@ -66,20 +66,20 @@ describe('revise', () => {
 
   it('is a no-op when nothing changed', () => {
     const ctx = testCtx();
-    const s = createGrain(ctx, { text: 'same', confidence: 'hunch' });
+    const s = createTidbit(ctx, { text: 'same', confidence: 'hunch' });
     expect(revise(ctx, s, { text: 'same  ', confidence: 'hunch' })).toBe(s);
   });
 
   it('counts a confidence change alone as a revision', () => {
     const ctx = testCtx();
-    const s = createGrain(ctx, { text: 'same', confidence: 'hunch' });
+    const s = createTidbit(ctx, { text: 'same', confidence: 'hunch' });
     ctx.advance(1);
     expect(revise(ctx, s, { text: 'same', confidence: 'conviction' }).history).toHaveLength(2);
   });
 
   it('stays newest-first even if the clock went backwards', () => {
     const ctx = testCtx('2026-06-01T00:00:00.000Z');
-    const s = createGrain(ctx, { text: 'v1' });
+    const s = createTidbit(ctx, { text: 'v1' });
     ctx.set('2026-05-01T00:00:00.000Z');
     const s2 = revise(ctx, s, { text: 'v2' });
     expect(Date.parse(s2.history[0]!.at)).toBeGreaterThan(Date.parse(s2.history[1]!.at));
@@ -90,7 +90,7 @@ describe('revise', () => {
 describe('reaffirm', () => {
   it('adds a reaffirmation without changing the text', () => {
     const ctx = testCtx();
-    const s = createGrain(ctx, { text: 'still true' });
+    const s = createTidbit(ctx, { text: 'still true' });
     ctx.advance(86_400_000);
     const r = reaffirm(ctx, s);
     expect(r.history[0]).toEqual({ type: 'reaffirmation', at: '2026-01-02T00:00:00.000Z' });
@@ -101,7 +101,7 @@ describe('reaffirm', () => {
 describe('updateMeta', () => {
   it('sets, clears and leaves fields alone', () => {
     const ctx = testCtx();
-    const s = createGrain(ctx, { text: 'x', title: 'T', kind: 'tip', category: 'A' });
+    const s = createTidbit(ctx, { text: 'x', title: 'T', kind: 'tip', category: 'A' });
     ctx.advance(5);
     const u = updateMeta(ctx, s, { title: null, category: 'B/C', tags: ['one'] });
     expect('title' in u).toBe(false);
@@ -112,9 +112,9 @@ describe('updateMeta', () => {
     expect(u.history).toBe(s.history);
   });
 
-  it('returns the same grain when nothing changed', () => {
+  it('returns the same tidbit when nothing changed', () => {
     const ctx = testCtx();
-    const s = createGrain(ctx, { text: 'x', category: 'A' });
+    const s = createTidbit(ctx, { text: 'x', category: 'A' });
     expect(updateMeta(ctx, s, { category: ' A ' })).toBe(s);
   });
 });
@@ -122,7 +122,7 @@ describe('updateMeta', () => {
 describe('lifecycle', () => {
   it('goes dormant with a why, and comes back', () => {
     const ctx = testCtx();
-    const s = createGrain(ctx, { text: 'x' });
+    const s = createTidbit(ctx, { text: 'x' });
     ctx.advance(1);
     const d = goDormant(ctx, s, 'outgrew it');
     expect(d.status).toBe('dormant');
@@ -134,15 +134,15 @@ describe('lifecycle', () => {
     expect(a.history).toEqual(s.history);
   });
 
-  it('succeeds an idea with a new linked grain', () => {
+  it('succeeds an idea with a new linked tidbit', () => {
     const ctx = testCtx();
-    const old = createGrain(ctx, { text: 'Kids need firm rules first', kind: 'belief', category: 'Parenting' });
+    const old = createTidbit(ctx, { text: 'Kids need firm rules first', kind: 'belief', category: 'Parenting' });
     ctx.advance(1000);
     const { old: o, successor: n } = succeed(ctx, old, { text: 'Kids need connection first' }, 'watched it work');
     expect(o.status).toBe('succeeded');
     expect(o.retired?.why).toBe('watched it work');
-    expect(o.links).toEqual([{ type: 'succeededBy', grain: n.id }]);
-    expect(n.links).toEqual([{ type: 'succeeds', grain: o.id }]);
+    expect(o.links).toEqual([{ type: 'succeededBy', tidbit: n.id }]);
+    expect(n.links).toEqual([{ type: 'succeeds', tidbit: o.id }]);
     expect(n.kind).toBe('belief');
     expect(n.category).toBe('Parenting');
     expect(n.id).not.toBe(o.id);
@@ -153,19 +153,19 @@ describe('lifecycle', () => {
 describe('links', () => {
   it('adds once, never to itself, and removes', () => {
     const ctx = testCtx();
-    const s = createGrain(ctx, { text: 'x' });
+    const s = createTidbit(ctx, { text: 'x' });
     const l = addLink(ctx, s, 'related', 'OTHER');
     expect(addLink(ctx, l, 'related', 'OTHER')).toBe(l);
     expect(addLink(ctx, s, 'related', s.id)).toBe(s);
-    expect(removeLink(ctx, l, { type: 'related', grain: 'OTHER' }).links).toEqual([]);
+    expect(removeLink(ctx, l, { type: 'related', tidbit: 'OTHER' }).links).toEqual([]);
   });
 });
 
 describe('display', () => {
   it('uses the title, else the first non-empty line', () => {
     const ctx = testCtx();
-    expect(displayTitle(createGrain(ctx, { text: 'body', title: 'Title' }))).toBe('Title');
-    expect(displayTitle(createGrain(ctx, { text: '\n# Heading\nmore' }))).toBe('Heading');
+    expect(displayTitle(createTidbit(ctx, { text: 'body', title: 'Title' }))).toBe('Title');
+    expect(displayTitle(createTidbit(ctx, { text: '\n# Heading\nmore' }))).toBe('Heading');
   });
 });
 
@@ -182,11 +182,11 @@ describe('normalizers', () => {
 describe('spinOff', () => {
   it('turns an insight into a linked practice, leaving the insight active', () => {
     const ctx = testCtx();
-    const insight = createGrain(ctx, { text: "I'm happier on 8 hours of sleep", kind: 'insight', category: 'Health', tags: ['sleep'] });
+    const insight = createTidbit(ctx, { text: "I'm happier on 8 hours of sleep", kind: 'insight', category: 'Health', tags: ['sleep'] });
     ctx.advance(1000);
     const { source, child } = spinOff(ctx, insight, { text: 'In bed by 10:30 on weeknights', kind: 'practice' });
     expect(source.status).toBe('active');
-    expect(source.links).toEqual([{ type: 'supports', grain: child.id }]);
+    expect(source.links).toEqual([{ type: 'supports', tidbit: child.id }]);
     expect(source.history).toEqual(insight.history);
     expect(child).toMatchObject({ kind: 'practice', category: 'Health', tags: ['sleep'], links: [] });
   });
@@ -195,12 +195,12 @@ describe('spinOff', () => {
 describe('connections', () => {
   it('reads links from both sides, with a label for each direction', () => {
     const ctx = testCtx();
-    const insight = createGrain(ctx, { text: 'insight' });
+    const insight = createTidbit(ctx, { text: 'insight' });
     const { source, child } = spinOff(ctx, insight, { text: 'practice' });
-    const other = addLink(ctx, createGrain(ctx, { text: 'other' }), 'contradicts', child.id);
+    const other = addLink(ctx, createTidbit(ctx, { text: 'other' }), 'contradicts', child.id);
     const all = [source, child, other];
-    expect(connections(source, all).map((c) => [c.label, c.grain.id])).toEqual([['Supports', child.id]]);
-    expect(connections(child, all).map((c) => [c.label, c.grain.id])).toEqual([
+    expect(connections(source, all).map((c) => [c.label, c.tidbit.id])).toEqual([['Supports', child.id]]);
+    expect(connections(child, all).map((c) => [c.label, c.tidbit.id])).toEqual([
       ['Supported by', source.id],
       ['Contradicted by', other.id],
     ]);
@@ -209,7 +209,7 @@ describe('connections', () => {
 
 describe('tidbit and details', () => {
   it('keeps a short tidbit and its details apart', () => {
-    const g = createGrain(testCtx(), { text: 'Clouds form where the conditions are right', details: 'Warm moist air rises,\ncools, and condenses.' });
+    const g = createTidbit(testCtx(), { text: 'Clouds form where the conditions are right', details: 'Warm moist air rises,\ncools, and condenses.' });
     expect(currentRevision(g)).toMatchObject({ text: 'Clouds form where the conditions are right', details: 'Warm moist air rises,\ncools, and condenses.' });
     expect(displayTitle(g)).toBe('Clouds form where the conditions are right');
   });
@@ -222,7 +222,7 @@ describe('tidbit and details', () => {
 
   it('treats a details change as a revision, and an empty string as clearing them', () => {
     const ctx = testCtx();
-    const g = createGrain(ctx, { text: 'T', details: 'D' });
+    const g = createTidbit(ctx, { text: 'T', details: 'D' });
     ctx.advance(1);
     expect(revise(ctx, g, { text: 'T', details: 'D' })).toBe(g);
     const r = revise(ctx, g, { text: 'T', details: 'D, expanded' });
@@ -235,7 +235,7 @@ describe('tidbit and details', () => {
 describe('drafts', () => {
   it('quick captures start as drafts and become active when finished', () => {
     const ctx = testCtx();
-    const d = createGrain(ctx, { text: 'jotted', draft: true });
+    const d = createTidbit(ctx, { text: 'jotted', draft: true });
     expect(d.status).toBe('draft');
     expect(isDraft(d)).toBe(true);
     ctx.advance(1);
@@ -243,14 +243,14 @@ describe('drafts', () => {
     expect(done.status).toBe('active');
     expect(done.history).toBe(d.history);
     expect(finishDraft(ctx, done)).toBe(done);
-    expect(createGrain(ctx, { text: 'deliberate' }).status).toBe('active');
+    expect(createTidbit(ctx, { text: 'deliberate' }).status).toBe('active');
   });
 });
 
 describe('kind changes', () => {
   it('records insight → fact in the history', () => {
     const ctx = testCtx();
-    const g = createGrain(ctx, { text: 'Clouds form where the conditions are right', kind: 'insight' });
+    const g = createTidbit(ctx, { text: 'Clouds form where the conditions are right', kind: 'insight' });
     ctx.advance(1000);
     const f = updateMeta(ctx, g, { kind: 'fact' });
     expect(f.kind).toBe('fact');
@@ -261,11 +261,11 @@ describe('kind changes', () => {
 
   it('does not record choosing a first kind, clearing it, or relabeling a draft', () => {
     const ctx = testCtx();
-    const g = createGrain(ctx, { text: 'x' });
+    const g = createTidbit(ctx, { text: 'x' });
     expect(updateMeta(ctx, g, { kind: 'tip' }).history).toHaveLength(1);
-    const t = createGrain(ctx, { text: 'x', kind: 'tip' });
+    const t = createTidbit(ctx, { text: 'x', kind: 'tip' });
     expect(updateMeta(ctx, t, { kind: null }).history).toHaveLength(1);
-    const d = createGrain(ctx, { text: 'x', kind: 'tip', draft: true });
+    const d = createTidbit(ctx, { text: 'x', kind: 'tip', draft: true });
     expect(updateMeta(ctx, d, { kind: 'fact' }).history).toHaveLength(1);
   });
 });

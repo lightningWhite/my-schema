@@ -4,30 +4,30 @@
  * discard it if it wasn't worth keeping after all.
  */
 import { useMemo, useState } from 'react';
-import { deleteGrain, editMeta, finishGrain, reviseGrain } from '../app/actions';
-import { href, useGrains, useNow } from '../app/hooks';
+import { deleteTidbit, editMeta, finishTidbit, reviseTidbit } from '../app/actions';
+import { href, useTidbits, useNow } from '../app/hooks';
 import { allCategories, recentCategories } from '../core/categories';
 import { KIND_INFO } from '../core/kinds';
-import { createdAt, currentRevision, isDraft, isUnsorted } from '../core/grain';
+import { createdAt, currentRevision, isDraft, isUnsorted } from '../core/tidbit';
 import { cmpAt } from '../core/time';
-import type { Grain } from '../core/types';
+import type { Tidbit } from '../core/types';
 import { plural, relativeDate } from './format';
-import { GrainEditor } from './GrainEditor';
+import { TidbitEditor } from './TidbitEditor';
 import { CategoryPicker, ConfidenceChips, Empty, KindChips, RevisionBody } from './parts';
 
 export function OrganizeScreen() {
-  const grains = useGrains();
+  const tidbits = useTidbits();
   const now = useNow();
   const [skipped, setSkipped] = useState<string[]>([]);
 
-  const queue = useMemo(() => (grains ?? []).filter(isDraft).sort((a, b) => cmpAt(createdAt(a), createdAt(b))), [grains]);
-  if (!grains) return null;
+  const queue = useMemo(() => (tidbits ?? []).filter(isDraft).sort((a, b) => cmpAt(createdAt(a), createdAt(b))), [tidbits]);
+  if (!tidbits) return null;
 
   const pending = queue.filter((g) => !skipped.includes(g.id));
-  const grain = pending[0];
-  const uncategorized = grains.filter((g) => g.status === 'active' && isUnsorted(g)).length;
+  const tidbit = pending[0];
+  const uncategorized = tidbits.filter((g) => g.status === 'active' && isUnsorted(g)).length;
 
-  if (!grain) {
+  if (!tidbit) {
     return (
       <div className="screen narrow">
         <header className="screen-header">
@@ -43,7 +43,7 @@ export function OrganizeScreen() {
           )}
           {uncategorized > 0 && (
             <p>
-              <a href={href({ name: 'schema', category: '\u0000unsorted' })}>{plural(uncategorized, 'grain')} without a category</a>
+              <a href={href({ name: 'schema', category: '\u0000unsorted' })}>{plural(uncategorized, 'tidbit')} without a category</a>
             </p>
           )}
         </Empty>
@@ -57,32 +57,32 @@ export function OrganizeScreen() {
         <h1>Organize</h1>
         <span className="header-count">{plural(pending.length, 'draft')}</span>
       </header>
-      <DraftCard key={grain.id} grain={grain} grains={grains} now={now} onSkip={() => setSkipped((s) => [...s, grain.id])} />
+      <DraftCard key={tidbit.id} tidbit={tidbit} tidbits={tidbits} now={now} onSkip={() => setSkipped((s) => [...s, tidbit.id])} />
     </div>
   );
 }
 
-function DraftCard({ grain, grains, now, onSkip }: { grain: Grain; grains: Grain[]; now: string; onSkip: () => void }) {
+function DraftCard({ tidbit, tidbits, now, onSkip }: { tidbit: Tidbit; tidbits: Tidbit[]; now: string; onSkip: () => void }) {
   const [mode, setMode] = useState<'view' | 'edit' | 'discard'>('view');
-  const cur = currentRevision(grain);
-  const others = grains.filter((g) => g.id !== grain.id);
-  const showConfidence = !grain.kind || KIND_INFO[grain.kind].hasConfidence;
+  const cur = currentRevision(tidbit);
+  const others = tidbits.filter((g) => g.id !== tidbit.id);
+  const showConfidence = !tidbit.kind || KIND_INFO[tidbit.kind].hasConfidence;
 
   return (
     <article className="card organize-card">
       <div className="card-meta">
-        Captured {relativeDate(createdAt(grain), now)} · <a href={href({ name: 'grain', id: grain.id })}>Open</a>
+        Captured {relativeDate(createdAt(tidbit), now)} · <a href={href({ name: 'tidbit', id: tidbit.id })}>Open</a>
       </div>
-      {grain.title && <h2 className="card-title">{grain.title}</h2>}
+      {tidbit.title && <h2 className="card-title">{tidbit.title}</h2>}
 
       {mode === 'edit' ? (
-        <GrainEditor
+        <TidbitEditor
           mode="revise"
           initial={{ text: cur.text, details: cur.details, confidence: cur.confidence }}
           saveLabel="Save"
           onCancel={() => setMode('view')}
           onSave={async ({ text, details, confidence, why }) => {
-            await reviseGrain(grain.id, { text, details, confidence, why });
+            await reviseTidbit(tidbit.id, { text, details, confidence, why });
             setMode('view');
           }}
         />
@@ -96,14 +96,14 @@ function DraftCard({ grain, grains, now, onSkip }: { grain: Grain; grains: Grain
       )}
 
       <div className="field-label">Kind</div>
-      <KindChips value={grain.kind} onChange={(k) => void editMeta(grain.id, { kind: k ?? null })} />
+      <KindChips value={tidbit.kind} onChange={(k) => void editMeta(tidbit.id, { kind: k ?? null })} />
 
       <div className="field-label">Category</div>
       <CategoryPicker
-        value={grain.category}
+        value={tidbit.category}
         recent={recentCategories(others, 8)}
         all={allCategories(others)}
-        onChange={(c) => void editMeta(grain.id, { category: c ?? null })}
+        onChange={(c) => void editMeta(tidbit.id, { category: c ?? null })}
       />
 
       {showConfidence && (
@@ -111,7 +111,7 @@ function DraftCard({ grain, grains, now, onSkip }: { grain: Grain; grains: Grain
           <div className="field-label">Confidence</div>
           <ConfidenceChips
             value={cur.confidence}
-            onChange={(c) => void reviseGrain(grain.id, { text: cur.text, details: cur.details ?? '', confidence: c })}
+            onChange={(c) => void reviseTidbit(tidbit.id, { text: cur.text, details: cur.details ?? '', confidence: c })}
           />
         </>
       )}
@@ -122,7 +122,7 @@ function DraftCard({ grain, grains, now, onSkip }: { grain: Grain; grains: Grain
           <button className="button small" onClick={() => setMode('view')}>
             Keep it
           </button>
-          <button className="button small danger" onClick={() => void deleteGrain(grain.id)}>
+          <button className="button small danger" onClick={() => void deleteTidbit(tidbit.id)}>
             Discard
           </button>
         </div>
@@ -135,7 +135,7 @@ function DraftCard({ grain, grains, now, onSkip }: { grain: Grain; grains: Grain
           <button className="button" onClick={onSkip}>
             Skip for now
           </button>
-          <button className="button primary" onClick={() => void finishGrain(grain.id)}>
+          <button className="button primary" onClick={() => void finishTidbit(tidbit.id)}>
             Done
           </button>
         </div>

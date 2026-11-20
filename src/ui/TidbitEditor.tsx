@@ -6,7 +6,7 @@
  */
 import { useEffect, useRef, useState } from 'react';
 import { KIND_INFO } from '../core/kinds';
-import { TIDBIT_SOFT_LENGTH, type NewGrain } from '../core/grain';
+import { TIDBIT_SOFT_LENGTH, type NewTidbit } from '../core/tidbit';
 import type { Confidence, Kind } from '../core/types';
 import { CategoryPicker, ConfidenceChips, KindChips, TagsField } from './parts';
 
@@ -28,11 +28,11 @@ interface Props {
   categories?: string[];
   recentCategories?: string[];
   saveLabel?: string;
-  onSave: (v: NewGrain & { why?: string }) => void | Promise<void>;
+  onSave: (v: NewTidbit & { why?: string }) => void | Promise<void>;
   onCancel: () => void;
 }
 
-export function GrainEditor({ mode, initial, categories = [], recentCategories = [], saveLabel, onSave, onCancel }: Props) {
+export function TidbitEditor({ mode, initial, categories = [], recentCategories = [], saveLabel, onSave, onCancel }: Props) {
   const [v, setV] = useState<EditorValue>(initial);
   const [busy, setBusy] = useState(false);
   const textRef = useRef<HTMLTextAreaElement>(null);
@@ -159,7 +159,7 @@ export function GrainEditor({ mode, initial, categories = [], recentCategories =
           Cancel
         </button>
         <button type="submit" className="button primary" disabled={!canSave}>
-          {saveLabel ?? (mode === 'revise' ? 'Save revision' : 'Save grain')}
+          {saveLabel ?? (mode === 'revise' ? 'Save revision' : 'Save tidbit')}
         </button>
       </div>
     </form>

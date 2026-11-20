@@ -1,5 +1,5 @@
 /**
- * The grain file format: `grains/<id>.md`. See docs/design.md §2.3.
+ * The tidbit file format: `tidbits/<id>.md`. See docs/design.md §2.3.
  *
  *   ---
  *   <YAML frontmatter>
@@ -16,7 +16,7 @@
  *   <!-- why -->
  *   why text (optional)
  *
- * History is newest first. Lines in grain text that would be mistaken for a
+ * History is newest first. Lines in tidbit text that would be mistaken for a
  * marker are escaped. Unknown frontmatter fields round-trip unchanged.
  */
 import { parse as parseYaml, stringify as stringifyYaml } from 'yaml';
@@ -31,11 +31,11 @@ import {
   type Link,
   type Origin,
   type Retirement,
-  type Grain,
+  type Tidbit,
   type Status,
 } from './types';
 
-export class GrainFormatError extends Error {}
+export class TidbitFormatError extends Error {}
 
 const KNOWN_KEYS = [
   'id',
@@ -54,7 +54,7 @@ const KNOWN_KEYS = [
 // ---------------------------------------------------------------- escaping
 
 /**
- * Prefixes of lines that grain text may not start with as written. Escaping
+ * Prefixes of lines that tidbit text may not start with as written. Escaping
  * inserts a backslash after `<!-- `; `<!-- \` is itself in the list so that
  * unescaping (remove one backslash) is exact.
  */
@@ -76,28 +76,28 @@ export function unescapeText(text: string): string {
 
 // ---------------------------------------------------------------- serialize
 
-export function serializeGrain(grain: Grain): string {
+export function serializeTidbit(tidbit: Tidbit): string {
   const fm: Record<string, unknown> = {};
-  fm.id = grain.id;
-  if (grain.title !== undefined) fm.title = grain.title;
-  if (grain.kind !== undefined) fm.kind = grain.kind;
-  fm.status = grain.status;
-  if (grain.category !== undefined) fm.category = grain.category;
-  fm.tags = grain.tags;
-  fm.links = grain.links.map((l) => ({ type: l.type, grain: l.grain }));
-  fm.origin = grain.origin ? { repo: grain.origin.repo, grain: grain.origin.grain, revision: grain.origin.revision } : null;
-  if (grain.source !== undefined) fm.source = grain.source;
-  if (grain.retired !== undefined) {
-    fm.retired = grain.retired.why === undefined ? { at: grain.retired.at } : { at: grain.retired.at, why: grain.retired.why };
+  fm.id = tidbit.id;
+  if (tidbit.title !== undefined) fm.title = tidbit.title;
+  if (tidbit.kind !== undefined) fm.kind = tidbit.kind;
+  fm.status = tidbit.status;
+  if (tidbit.category !== undefined) fm.category = tidbit.category;
+  fm.tags = tidbit.tags;
+  fm.links = tidbit.links.map((l) => ({ type: l.type, tidbit: l.tidbit }));
+  fm.origin = tidbit.origin ? { repo: tidbit.origin.repo, tidbit: tidbit.origin.tidbit, revision: tidbit.origin.revision } : null;
+  if (tidbit.source !== undefined) fm.source = tidbit.source;
+  if (tidbit.retired !== undefined) {
+    fm.retired = tidbit.retired.why === undefined ? { at: tidbit.retired.at } : { at: tidbit.retired.at, why: tidbit.retired.why };
   }
-  fm.updated = grain.updated;
-  for (const [k, v] of Object.entries(grain.extra)) {
+  fm.updated = tidbit.updated;
+  for (const [k, v] of Object.entries(tidbit.extra)) {
     if (!(KNOWN_KEYS as readonly string[]).includes(k)) fm[k] = v;
   }
 
   const yaml = stringifyYaml(fm, { lineWidth: 0, flowCollectionPadding: false });
   let out = `---\n${yaml}---\n\n`;
-  for (const entry of grain.history) {
+  for (const entry of tidbit.history) {
     if (entry.type === 'reaffirmation') {
       out += `<!-- reaffirmed at=${entry.at} -->\n\n`;
     } else if (entry.type === 'kindChange') {
@@ -137,17 +137,17 @@ function blockText(lines: string[]): string {
   return unescapeText(text);
 }
 
-export function parseGrain(file: string): Grain {
+export function parseTidbit(file: string): Tidbit {
   const src = file.replace(/^﻿/, '');
-  if (!src.startsWith('---\n')) throw new GrainFormatError('Missing frontmatter');
+  if (!src.startsWith('---\n')) throw new TidbitFormatError('Missing frontmatter');
   const end = src.indexOf('\n---\n', 3);
-  if (end < 0) throw new GrainFormatError('Unterminated frontmatter');
+  if (end < 0) throw new TidbitFormatError('Unterminated frontmatter');
   const fmText = src.slice(4, end + 1);
   const body = src.slice(end + 5);
 
   const fm: unknown = parseYaml(fmText);
   if (fm === null || typeof fm !== 'object' || Array.isArray(fm)) {
-    throw new GrainFormatError('Frontmatter is not a mapping');
+    throw new TidbitFormatError('Frontmatter is not a mapping');
   }
   const f = fm as Record<string, unknown>;
 
@@ -178,7 +178,7 @@ export function parseGrain(file: string): Grain {
     } else if (rev) {
       const confidence = rev[2];
       if (confidence !== undefined && !(CONFIDENCES as readonly string[]).includes(confidence)) {
-        throw new GrainFormatError(`Unknown confidence: ${confidence}`);
+        throw new TidbitFormatError(`Unknown confidence: ${confidence}`);
       }
       history.push({
         type: 'revision',
@@ -189,27 +189,27 @@ export function parseGrain(file: string): Grain {
     } else if (marker === DETAILS_LINE) {
       const last = history[history.length - 1];
       if (!last || last.type !== 'revision' || last.details !== undefined || last.why !== undefined) {
-        throw new GrainFormatError('A details block must follow a revision, before its why');
+        throw new TidbitFormatError('A details block must follow a revision, before its why');
       }
       last.details = blockText(content);
     } else if (marker === WHY_LINE) {
       const last = history[history.length - 1];
       if (!last || last.type !== 'revision' || last.why !== undefined) {
-        throw new GrainFormatError('A why block must follow a revision');
+        throw new TidbitFormatError('A why block must follow a revision');
       }
       last.why = blockText(content);
     } else {
-      throw new GrainFormatError(`Bad marker: ${marker}`);
+      throw new TidbitFormatError(`Bad marker: ${marker}`);
     }
   }
-  if (!history.some((e) => e.type === 'revision')) throw new GrainFormatError('Grain has no revisions');
+  if (!history.some((e) => e.type === 'revision')) throw new TidbitFormatError('Tidbit has no revisions');
 
   const extra: Record<string, unknown> = {};
   for (const [k, v] of Object.entries(f)) {
     if (!(KNOWN_KEYS as readonly string[]).includes(k)) extra[k] = v;
   }
 
-  const grain: Grain = {
+  const tidbit: Tidbit = {
     id: str(f.id, 'id'),
     status: oneOf(f.status ?? 'active', STATUSES, 'status') as Status,
     tags: strList(f.tags, 'tags'),
@@ -219,12 +219,12 @@ export function parseGrain(file: string): Grain {
     history,
     extra,
   };
-  if (f.title != null) grain.title = str(f.title, 'title');
-  if (f.kind != null) grain.kind = oneOf(f.kind, KINDS, 'kind') as Kind;
-  if (f.category != null) grain.category = str(f.category, 'category');
-  if (f.source != null) grain.source = str(f.source, 'source');
-  if (f.retired != null) grain.retired = retired(f.retired);
-  return grain;
+  if (f.title != null) tidbit.title = str(f.title, 'title');
+  if (f.kind != null) tidbit.kind = oneOf(f.kind, KINDS, 'kind') as Kind;
+  if (f.category != null) tidbit.category = str(f.category, 'category');
+  if (f.source != null) tidbit.source = str(f.source, 'source');
+  if (f.retired != null) tidbit.retired = retired(f.retired);
+  return tidbit;
 }
 
 function latestAt(history: HistoryEntry[]): string {
@@ -232,40 +232,40 @@ function latestAt(history: HistoryEntry[]): string {
 }
 
 function str(v: unknown, name: string): string {
-  if (typeof v !== 'string') throw new GrainFormatError(`${name} must be a string`);
+  if (typeof v !== 'string') throw new TidbitFormatError(`${name} must be a string`);
   return v;
 }
 
 function oneOf(v: unknown, allowed: readonly string[], name: string): string {
   const s = str(v, name);
-  if (!allowed.includes(s)) throw new GrainFormatError(`Unknown ${name}: ${s}`);
+  if (!allowed.includes(s)) throw new TidbitFormatError(`Unknown ${name}: ${s}`);
   return s;
 }
 
 function strList(v: unknown, name: string): string[] {
   if (v == null) return [];
-  if (!Array.isArray(v)) throw new GrainFormatError(`${name} must be a list`);
+  if (!Array.isArray(v)) throw new TidbitFormatError(`${name} must be a list`);
   return v.map((x) => str(x, name));
 }
 
 function obj(v: unknown, name: string): Record<string, unknown> {
-  if (v === null || typeof v !== 'object' || Array.isArray(v)) throw new GrainFormatError(`${name} must be a mapping`);
+  if (v === null || typeof v !== 'object' || Array.isArray(v)) throw new TidbitFormatError(`${name} must be a mapping`);
   return v as Record<string, unknown>;
 }
 
 function links(v: unknown): Link[] {
   if (v == null) return [];
-  if (!Array.isArray(v)) throw new GrainFormatError('links must be a list');
+  if (!Array.isArray(v)) throw new TidbitFormatError('links must be a list');
   return v.map((x) => {
     const o = obj(x, 'link');
-    return { type: oneOf(o.type, LINK_TYPES, 'link type') as Link['type'], grain: str(o.grain, 'link grain') };
+    return { type: oneOf(o.type, LINK_TYPES, 'link type') as Link['type'], tidbit: str(o.tidbit, 'link tidbit') };
   });
 }
 
 function origin(v: unknown): Origin | null {
   if (v == null) return null;
   const o = obj(v, 'origin');
-  return { repo: str(o.repo, 'origin.repo'), grain: str(o.grain, 'origin.grain'), revision: str(o.revision, 'origin.revision') };
+  return { repo: str(o.repo, 'origin.repo'), tidbit: str(o.tidbit, 'origin.tidbit'), revision: str(o.revision, 'origin.revision') };
 }
 
 function retired(v: unknown): Retirement {
@@ -275,7 +275,7 @@ function retired(v: unknown): Retirement {
   return r;
 }
 
-/** Repo path of a grain's file. */
-export function grainPath(id: string): string {
-  return `grains/${id}.md`;
+/** Repo path of a tidbit's file. */
+export function tidbitPath(id: string): string {
+  return `tidbits/${id}.md`;
 }

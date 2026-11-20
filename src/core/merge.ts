@@ -1,5 +1,5 @@
 /**
- * Merging two versions of the same grain (docs/design.md §3.5).
+ * Merging two versions of the same tidbit (docs/design.md §3.5).
  *
  * - History: union of entries, newest first. Append-only history means two
  *   devices' revisions never conflict; they interleave.
@@ -14,20 +14,20 @@
  * merge(b, y, x). Property-tested.
  */
 import { cmpAt, laterAt } from './time';
-import type { HistoryEntry, Link, Grain } from './types';
+import type { HistoryEntry, Link, Tidbit } from './types';
 
 type FieldKey = 'title' | 'kind' | 'category' | 'source' | 'origin';
 
 const FIELDS: FieldKey[] = ['title', 'kind', 'category', 'source', 'origin'];
 
-export function mergeGrains(base: Grain | null, a: Grain, b: Grain): Grain {
-  if (a.id !== b.id || (base && base.id !== a.id)) throw new Error('Cannot merge different grains');
+export function mergeTidbits(base: Tidbit | null, a: Tidbit, b: Tidbit): Tidbit {
+  if (a.id !== b.id || (base && base.id !== a.id)) throw new Error('Cannot merge different tidbits');
 
   // Which side wins a true conflict. Deterministic regardless of argument order.
   const cmp = cmpAt(a.updated, b.updated) || compareJson(a, b);
   const winner = cmp >= 0 ? a : b;
 
-  const pick = <T>(get: (s: Grain) => T): T => {
+  const pick = <T>(get: (s: Tidbit) => T): T => {
     const va = get(a);
     const vb = get(b);
     if (equal(va, vb)) return va;
@@ -39,7 +39,7 @@ export function mergeGrains(base: Grain | null, a: Grain, b: Grain): Grain {
     return get(winner);
   };
 
-  const out: Grain = {
+  const out: Tidbit = {
     id: a.id,
     status: 'active',
     tags: mergeSet(base?.tags ?? null, a.tags, b.tags, (t) => t),
@@ -123,7 +123,7 @@ function mergeSet<T>(base: T[] | null, a: T[], b: T[], key: (x: T) => string): T
 }
 
 function linkKey(l: Link): string {
-  return `${l.type}:${l.grain}`;
+  return `${l.type}:${l.tidbit}`;
 }
 
 function equal(x: unknown, y: unknown): boolean {

@@ -1,5 +1,5 @@
 /**
- * The grain model. See docs/design.md §2.
+ * The tidbit model. See docs/design.md §2.
  *
  * Everything here is plain data: JSON-serializable, no classes, no Dates.
  * Timestamps are ISO 8601 UTC strings; IDs are ULIDs.
@@ -31,17 +31,17 @@ export type LinkType = (typeof LINK_TYPES)[number];
 
 export interface Link {
   type: LinkType;
-  grain: string;
+  tidbit: string;
 }
 
-/** Where a planted grain came from (§5.2). */
+/** Where a planted tidbit came from (§5.2). */
 export interface Origin {
   repo: string;
-  grain: string;
+  tidbit: string;
   revision: string;
 }
 
-/** Why and when a grain went dormant or was succeeded. */
+/** Why and when a tidbit went dormant or was succeeded. */
 export interface Retirement {
   at: string;
   why?: string;
@@ -50,10 +50,10 @@ export interface Retirement {
 export interface Revision {
   type: 'revision';
   at: string;
-  /** The tidbit itself: short, the headline everywhere the grain is shown. */
+  /** The tidbit as written: short, the headline everywhere it is shown. */
   text: string;
   confidence?: Confidence;
-  /** Optional longer explanation behind the tidbit in `text`. */
+  /** Optional longer explanation behind it. */
   details?: string;
   /** Why it changed from the previous revision. */
   why?: string;
@@ -64,7 +64,7 @@ export interface Reaffirmation {
   at: string;
 }
 
-/** The grain was relabeled from one kind to another, e.g. insight → fact. */
+/** The tidbit was relabeled from one kind to another, e.g. insight → fact. */
 export interface KindChange {
   type: 'kindChange';
   at: string;
@@ -74,7 +74,7 @@ export interface KindChange {
 
 export type HistoryEntry = Revision | Reaffirmation | KindChange;
 
-export interface Grain {
+export interface Tidbit {
   id: string;
   title?: string;
   kind?: Kind;

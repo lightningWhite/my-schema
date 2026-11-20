@@ -1,12 +1,12 @@
 /**
- * Grain operations. Each takes the current grain and returns a new one; nothing
+ * Tidbit operations. Each takes the current tidbit and returns a new one; nothing
  * is mutated. History is append-only (CLAUDE.md rule 3): these functions only
  * ever add entries.
  */
 import { laterAt, strictlyAfter } from './time';
-import type { Confidence, Ctx, HistoryEntry, Kind, Link, LinkType, Origin, Revision, Grain } from './types';
+import type { Confidence, Ctx, HistoryEntry, Kind, Link, LinkType, Origin, Revision, Tidbit } from './types';
 
-export interface NewGrain {
+export interface NewTidbit {
   /** Save as a draft (quick capture) rather than active. */
   draft?: boolean;
   /** The tidbit. If it has several lines, the first is the tidbit and the rest become details. */
@@ -21,14 +21,14 @@ export interface NewGrain {
   origin?: Origin;
 }
 
-export function createGrain(ctx: Ctx, input: NewGrain): Grain {
+export function createTidbit(ctx: Ctx, input: NewTidbit): Tidbit {
   const { text, details } = splitTidbit(input.text, input.details);
-  if (!text) throw new Error('A grain needs some text');
+  if (!text) throw new Error('A tidbit needs some text');
   const at = ctx.now();
   const revision: Revision = { type: 'revision', at, text };
   if (details) revision.details = details;
   if (input.confidence) revision.confidence = input.confidence;
-  const grain: Grain = {
+  const tidbit: Tidbit = {
     id: ctx.newId(),
     status: input.draft ? 'draft' : 'active',
     tags: normalizeTags(input.tags ?? []),
@@ -39,42 +39,42 @@ export function createGrain(ctx: Ctx, input: NewGrain): Grain {
     extra: {},
   };
   const title = cleanOptional(input.title);
-  if (title) grain.title = title;
-  if (input.kind) grain.kind = input.kind;
+  if (title) tidbit.title = title;
+  if (input.kind) tidbit.kind = input.kind;
   const category = normalizeCategory(input.category);
-  if (category) grain.category = category;
+  if (category) tidbit.category = category;
   const source = cleanOptional(input.source);
-  if (source) grain.source = source;
-  return grain;
+  if (source) tidbit.source = source;
+  return tidbit;
 }
 
 // ---------------------------------------------------------------- reading
 
-export function currentRevision(grain: Grain): Revision {
-  const rev = grain.history.find((e): e is Revision => e.type === 'revision');
-  if (!rev) throw new Error(`Grain ${grain.id} has no revisions`);
+export function currentRevision(tidbit: Tidbit): Revision {
+  const rev = tidbit.history.find((e): e is Revision => e.type === 'revision');
+  if (!rev) throw new Error(`Tidbit ${tidbit.id} has no revisions`);
   return rev;
 }
 
-export function revisions(grain: Grain): Revision[] {
-  return grain.history.filter((e): e is Revision => e.type === 'revision');
+export function revisions(tidbit: Tidbit): Revision[] {
+  return tidbit.history.filter((e): e is Revision => e.type === 'revision');
 }
 
-/** What a list shows for a grain: its title, else the first line of its text. */
-export function displayTitle(grain: Grain): string {
-  if (grain.title) return grain.title;
-  const text = currentRevision(grain).text;
+/** What a list shows for a tidbit: its title, else the first line of its text. */
+export function displayTitle(tidbit: Tidbit): string {
+  if (tidbit.title) return tidbit.title;
+  const text = currentRevision(tidbit).text;
   const line = text.split('\n').find((l) => l.trim()) ?? '';
   return line.replace(/^#+\s*/, '').trim();
 }
 
-export function isUnsorted(grain: Grain): boolean {
-  return grain.category === undefined;
+export function isUnsorted(tidbit: Tidbit): boolean {
+  return tidbit.category === undefined;
 }
 
-/** When the grain was first written. */
-export function createdAt(grain: Grain): string {
-  return grain.history[grain.history.length - 1]!.at;
+/** When the tidbit was first written. */
+export function createdAt(tidbit: Tidbit): string {
+  return tidbit.history[tidbit.history.length - 1]!.at;
 }
 
 /** Past this many characters, the tidbit gets a gentle "put the rest in details" hint (docs/design.md §2.5). */
@@ -107,28 +107,28 @@ export interface RevisionInput {
 }
 
 /**
- * Add a revision. Returns the grain unchanged if neither the text nor the
+ * Add a revision. Returns the tidbit unchanged if neither the text nor the
  * confidence changed (saving the editor without edits is not a revision).
  */
-export function revise(ctx: Ctx, grain: Grain, input: RevisionInput): Grain {
+export function revise(ctx: Ctx, tidbit: Tidbit, input: RevisionInput): Tidbit {
   const { text, details } = splitTidbit(input.text, input.details);
   if (!text) throw new Error('A revision needs some text');
-  const cur = currentRevision(grain);
-  if (text === cur.text && details === cur.details && input.confidence === cur.confidence) return grain;
-  const at = nextAt(ctx, grain);
+  const cur = currentRevision(tidbit);
+  if (text === cur.text && details === cur.details && input.confidence === cur.confidence) return tidbit;
+  const at = nextAt(ctx, tidbit);
   const rev: Revision = { type: 'revision', at, text };
   if (details) rev.details = details;
   if (input.confidence) rev.confidence = input.confidence;
   const why = cleanOptional(input.why);
   if (why) rev.why = why;
-  return { ...grain, history: [rev, ...grain.history], updated: at };
+  return { ...tidbit, history: [rev, ...tidbit.history], updated: at };
 }
 
 /** Record "still true" from a review. */
-export function reaffirm(ctx: Ctx, grain: Grain): Grain {
-  const at = nextAt(ctx, grain);
+export function reaffirm(ctx: Ctx, tidbit: Tidbit): Tidbit {
+  const at = nextAt(ctx, tidbit);
   const entry: HistoryEntry = { type: 'reaffirmation', at };
-  return { ...grain, history: [entry, ...grain.history], updated: at };
+  return { ...tidbit, history: [entry, ...tidbit.history], updated: at };
 }
 
 export interface MetaPatch {
@@ -143,92 +143,92 @@ export interface MetaPatch {
  * Change metadata. A field set to null (or an empty string) is cleared;
  * a field left undefined is unchanged.
  */
-export function updateMeta(ctx: Ctx, grain: Grain, patch: MetaPatch): Grain {
-  const next: Grain = { ...grain };
+export function updateMeta(ctx: Ctx, tidbit: Tidbit, patch: MetaPatch): Tidbit {
+  const next: Tidbit = { ...tidbit };
   if (patch.title !== undefined) setOrClear(next, 'title', cleanOptional(patch.title ?? undefined));
   if (patch.kind !== undefined) setOrClear(next, 'kind', patch.kind ?? undefined);
-  // Moving from one kind to another is part of how a grain's meaning changed
+  // Moving from one kind to another is part of how a tidbit's meaning changed
   // ("I noticed it" → "I learned it's a fact"), so it goes in the history.
   // Choosing a first kind, or relabeling a draft, is just filing.
-  const kindChanged = grain.status !== 'draft' && grain.kind && next.kind && grain.kind !== next.kind;
+  const kindChanged = tidbit.status !== 'draft' && tidbit.kind && next.kind && tidbit.kind !== next.kind;
   if (patch.category !== undefined) setOrClear(next, 'category', normalizeCategory(patch.category ?? undefined));
   if (patch.source !== undefined) setOrClear(next, 'source', cleanOptional(patch.source ?? undefined));
   if (patch.tags !== undefined) next.tags = normalizeTags(patch.tags);
-  if (sameMeta(grain, next)) return grain;
+  if (sameMeta(tidbit, next)) return tidbit;
   if (kindChanged) {
-    const at = nextAt(ctx, grain);
-    next.history = [{ type: 'kindChange', at, from: grain.kind!, to: next.kind! }, ...grain.history];
+    const at = nextAt(ctx, tidbit);
+    next.history = [{ type: 'kindChange', at, from: tidbit.kind!, to: next.kind! }, ...tidbit.history];
     next.updated = at;
   } else {
-    next.updated = nextUpdated(ctx, grain);
+    next.updated = nextUpdated(ctx, tidbit);
   }
   return next;
 }
 
 /** Mark a draft done: it joins the schema proper (reviews, reminders). */
-export function finishDraft(ctx: Ctx, grain: Grain): Grain {
-  if (grain.status !== 'draft') return grain;
-  return { ...grain, status: 'active', updated: nextUpdated(ctx, grain) };
+export function finishDraft(ctx: Ctx, tidbit: Tidbit): Tidbit {
+  if (tidbit.status !== 'draft') return tidbit;
+  return { ...tidbit, status: 'active', updated: nextUpdated(ctx, tidbit) };
 }
 
-export function isDraft(grain: Grain): boolean {
-  return grain.status === 'draft';
+export function isDraft(tidbit: Tidbit): boolean {
+  return tidbit.status === 'draft';
 }
 
-/** Retire a grain with nothing replacing it. */
-export function goDormant(ctx: Ctx, grain: Grain, why?: string): Grain {
-  const at = nextUpdated(ctx, grain);
+/** Retire a tidbit with nothing replacing it. */
+export function goDormant(ctx: Ctx, tidbit: Tidbit, why?: string): Tidbit {
+  const at = nextUpdated(ctx, tidbit);
   const w = cleanOptional(why);
-  return { ...grain, status: 'dormant', retired: w ? { at, why: w } : { at }, updated: at };
+  return { ...tidbit, status: 'dormant', retired: w ? { at, why: w } : { at }, updated: at };
 }
 
-/** Bring a dormant or succeeded grain back to active. Its links are kept. */
-export function reactivate(ctx: Ctx, grain: Grain): Grain {
-  if (grain.status === 'active') return grain;
-  const { retired: _retired, ...rest } = grain;
-  return { ...rest, status: 'active', updated: nextUpdated(ctx, grain) };
+/** Bring a dormant or succeeded tidbit back to active. Its links are kept. */
+export function reactivate(ctx: Ctx, tidbit: Tidbit): Tidbit {
+  if (tidbit.status === 'active') return tidbit;
+  const { retired: _retired, ...rest } = tidbit;
+  return { ...rest, status: 'active', updated: nextUpdated(ctx, tidbit) };
 }
 
 /**
- * Replace a grain with a different idea. Returns the retired old grain and the
- * new one, linked both ways. The new grain inherits kind and category.
+ * Replace a tidbit with a different idea. Returns the retired old tidbit and the
+ * new one, linked both ways. The new tidbit inherits kind and category.
  */
-export function succeed(ctx: Ctx, old: Grain, input: NewGrain, why?: string): { old: Grain; successor: Grain } {
-  const successor = createGrain(ctx, {
+export function succeed(ctx: Ctx, old: Tidbit, input: NewTidbit, why?: string): { old: Tidbit; successor: Tidbit } {
+  const successor = createTidbit(ctx, {
     kind: old.kind,
     category: old.category,
     tags: old.tags,
     ...input,
   });
-  successor.links = [{ type: 'succeeds', grain: old.id }];
+  successor.links = [{ type: 'succeeds', tidbit: old.id }];
   const at = nextUpdated(ctx, old);
   const w = cleanOptional(why);
-  const retiredOld: Grain = {
+  const retiredOld: Tidbit = {
     ...old,
     status: 'succeeded',
     retired: w ? { at, why: w } : { at },
-    links: [...old.links.filter((l) => l.type !== 'succeededBy'), { type: 'succeededBy', grain: successor.id }],
+    links: [...old.links.filter((l) => l.type !== 'succeededBy'), { type: 'succeededBy', tidbit: successor.id }],
     updated: at,
   };
   return { old: retiredOld, successor };
 }
 
 /**
- * Start a new grain that grows out of an existing one — e.g. turning the
+ * Start a new tidbit that grows out of an existing one — e.g. turning the
  * insight "I'm happier on 8 hours of sleep" into the practice "In bed by
- * 10:30". The source keeps a `supports` link to the new grain; the new grain
+ * 10:30". The source keeps a `supports` link to the new tidbit; the new tidbit
  * shows it as "supported by" through backlinks. Unlike succeed, the source
  * stays active: both ideas stand.
  */
-export function spinOff(ctx: Ctx, source: Grain, input: NewGrain, type: LinkType = 'supports'): { source: Grain; child: Grain } {
-  const child = createGrain(ctx, { category: source.category, tags: source.tags, ...input });
+export function spinOff(ctx: Ctx, source: Tidbit, input: NewTidbit, type: LinkType = 'supports'): { source: Tidbit; child: Tidbit } {
+  const child = createTidbit(ctx, { category: source.category, tags: source.tags, ...input });
   return { source: addLink(ctx, source, type, child.id), child };
 }
 
 export interface Connection {
-  /** Phrase describing how `grain` relates to the one being viewed. */
+  /** Phrase describing how `tidbit` relates to the one being viewed. */
   label: string;
-  grain: Grain;
+  tidbit: Tidbit;
 }
 
 const OUTGOING: Record<LinkType, string> = {
@@ -247,36 +247,36 @@ const INCOMING: Record<LinkType, string> = {
 };
 
 /**
- * Every grain connected to `grain`, from its own links and from links other
- * grains hold to it. Links are stored once, on one side; this reads both.
+ * Every tidbit connected to `tidbit`, from its own links and from links other
+ * tidbits hold to it. Links are stored once, on one side; this reads both.
  */
-export function connections(grain: Grain, all: Grain[]): Connection[] {
+export function connections(tidbit: Tidbit, all: Tidbit[]): Connection[] {
   const byId = new Map(all.map((s) => [s.id, s]));
   const out: Connection[] = [];
   const seen = new Set<string>();
-  const push = (label: string, s: Grain | undefined) => {
-    if (!s || s.id === grain.id) return;
+  const push = (label: string, s: Tidbit | undefined) => {
+    if (!s || s.id === tidbit.id) return;
     const key = `${label}:${s.id}`;
     if (seen.has(key)) return;
     seen.add(key);
-    out.push({ label, grain: s });
+    out.push({ label, tidbit: s });
   };
-  for (const l of grain.links) push(OUTGOING[l.type], byId.get(l.grain));
+  for (const l of tidbit.links) push(OUTGOING[l.type], byId.get(l.tidbit));
   for (const other of all) {
-    for (const l of other.links) if (l.grain === grain.id) push(INCOMING[l.type], other);
+    for (const l of other.links) if (l.tidbit === tidbit.id) push(INCOMING[l.type], other);
   }
   return out;
 }
 
-export function addLink(ctx: Ctx, grain: Grain, type: LinkType, target: string): Grain {
-  if (target === grain.id || grain.links.some((l) => l.type === type && l.grain === target)) return grain;
-  return { ...grain, links: [...grain.links, { type, grain: target }], updated: nextUpdated(ctx, grain) };
+export function addLink(ctx: Ctx, tidbit: Tidbit, type: LinkType, target: string): Tidbit {
+  if (target === tidbit.id || tidbit.links.some((l) => l.type === type && l.tidbit === target)) return tidbit;
+  return { ...tidbit, links: [...tidbit.links, { type, tidbit: target }], updated: nextUpdated(ctx, tidbit) };
 }
 
-export function removeLink(ctx: Ctx, grain: Grain, link: Link): Grain {
-  const links = grain.links.filter((l) => !(l.type === link.type && l.grain === link.grain));
-  if (links.length === grain.links.length) return grain;
-  return { ...grain, links, updated: nextUpdated(ctx, grain) };
+export function removeLink(ctx: Ctx, tidbit: Tidbit, link: Link): Tidbit {
+  const links = tidbit.links.filter((l) => !(l.type === link.type && l.tidbit === link.tidbit));
+  if (links.length === tidbit.links.length) return tidbit;
+  return { ...tidbit, links, updated: nextUpdated(ctx, tidbit) };
 }
 
 // ---------------------------------------------------------------- normalizing
@@ -311,12 +311,12 @@ function cleanOptional(s: string | undefined): string | undefined {
   return t ? t : undefined;
 }
 
-function setOrClear<K extends 'title' | 'kind' | 'category' | 'source'>(grain: Grain, key: K, value: Grain[K] | undefined) {
-  if (value === undefined) delete grain[key];
-  else grain[key] = value;
+function setOrClear<K extends 'title' | 'kind' | 'category' | 'source'>(tidbit: Tidbit, key: K, value: Tidbit[K] | undefined) {
+  if (value === undefined) delete tidbit[key];
+  else tidbit[key] = value;
 }
 
-function sameMeta(a: Grain, b: Grain): boolean {
+function sameMeta(a: Tidbit, b: Tidbit): boolean {
   return (
     a.title === b.title &&
     a.kind === b.kind &&
@@ -331,11 +331,11 @@ function sameMeta(a: Grain, b: Grain): boolean {
  * Timestamp for a new history entry: now, but strictly after every existing
  * entry, so the newest-first order holds even if this device's clock is behind.
  */
-function nextAt(ctx: Ctx, grain: Grain): string {
-  const latest = grain.history.reduce((m, e) => laterAt(e.at, m), grain.updated);
+function nextAt(ctx: Ctx, tidbit: Tidbit): string {
+  const latest = tidbit.history.reduce((m, e) => laterAt(e.at, m), tidbit.updated);
   return strictlyAfter(ctx.now(), latest);
 }
 
-function nextUpdated(ctx: Ctx, grain: Grain): string {
-  return strictlyAfter(ctx.now(), grain.updated);
+function nextUpdated(ctx: Ctx, tidbit: Tidbit): string {
+  return strictlyAfter(ctx.now(), tidbit.updated);
 }

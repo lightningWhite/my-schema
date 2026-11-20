@@ -1,20 +1,20 @@
 /** Everything in the schema: category tree, filters and search. */
 import { useMemo, useState } from 'react';
-import { navigate, useNow, useGrains } from '../app/hooks';
+import { navigate, useNow, useTidbits } from '../app/hooks';
 import { categoryTree, type CategoryNode } from '../core/categories';
 import { KIND_INFO } from '../core/kinds';
-import { searchGrains } from '../core/search';
-import { isUnsorted } from '../core/grain';
+import { searchTidbits } from '../core/search';
+import { isUnsorted } from '../core/tidbit';
 import { cmpAt } from '../core/time';
-import { KINDS, type Kind, type Grain } from '../core/types';
+import { KINDS, type Kind, type Tidbit } from '../core/types';
 import { plural } from './format';
-import { Chip, Empty, GrainRow } from './parts';
+import { Chip, Empty, TidbitRow } from './parts';
 
 type StatusFilter = 'current' | 'drafts' | 'retired' | 'all';
 const UNSORTED = '\u0000unsorted';
 
 export function SchemaScreen({ category, query }: { category?: string; query?: string }) {
-  const grains = useGrains();
+  const tidbits = useTidbits();
   const now = useNow();
   const [q, setQ] = useState(query ?? '');
   const [kind, setKind] = useState<Kind | undefined>();
@@ -22,21 +22,21 @@ export function SchemaScreen({ category, query }: { category?: string; query?: s
 
   const setCategory = (c: string | undefined) => navigate({ name: 'schema', category: c, query: q || undefined }, true);
 
-  const tree = useMemo(() => categoryTree(grains ?? []), [grains]);
+  const tree = useMemo(() => categoryTree(tidbits ?? []), [tidbits]);
   const list = useMemo(() => {
-    let out: Grain[] = grains ?? [];
+    let out: Tidbit[] = tidbits ?? [];
     if (status === 'current') out = out.filter((s) => s.status === 'active' || s.status === 'draft');
     else if (status === 'drafts') out = out.filter((s) => s.status === 'draft');
     else if (status === 'retired') out = out.filter((s) => s.status === 'dormant' || s.status === 'succeeded');
     if (kind) out = out.filter((s) => s.kind === kind);
     if (category === UNSORTED) out = out.filter(isUnsorted);
     else if (category) out = out.filter((s) => s.category === category || s.category?.startsWith(category + '/'));
-    if (q.trim()) return searchGrains(out, q, 500).map((h) => h.grain);
+    if (q.trim()) return searchTidbits(out, q, 500).map((h) => h.tidbit);
     return [...out].sort((a, b) => cmpAt(b.updated, a.updated));
-  }, [grains, status, kind, category, q]);
+  }, [tidbits, status, kind, category, q]);
 
-  if (!grains) return null;
-  if (grains.length === 0) {
+  if (!tidbits) return null;
+  if (tidbits.length === 0) {
     return (
       <div className="screen">
         <header className="screen-header">
@@ -44,25 +44,25 @@ export function SchemaScreen({ category, query }: { category?: string; query?: s
         </header>
         <Empty title="Your schema is empty">
           <p>
-            <a href="#/">Capture your first grain</a> — something you've noticed, learned or come to believe.
+            <a href="#/">Capture your first tidbit</a> — something you've noticed, learned or come to believe.
           </p>
         </Empty>
       </div>
     );
   }
 
-  const unsortedCount = grains.filter((s) => (s.status === 'active' || s.status === 'draft') && isUnsorted(s)).length;
+  const unsortedCount = tidbits.filter((s) => (s.status === 'active' || s.status === 'draft') && isUnsorted(s)).length;
 
   return (
     <div className="screen schema">
       <header className="screen-header">
         <h1>Schema</h1>
-        <span className="header-count">{plural(grains.length, 'grain')}</span>
+        <span className="header-count">{plural(tidbits.length, 'tidbit')}</span>
       </header>
       <div className="schema-layout">
         <nav className="tree" aria-label="Categories">
           <button className={`tree-item${!category ? ' selected' : ''}`} onClick={() => setCategory(undefined)}>
-            <span>All grains</span>
+            <span>All tidbits</span>
           </button>
           {unsortedCount > 0 && (
             <button className={`tree-item${category === UNSORTED ? ' selected' : ''}`} onClick={() => setCategory(UNSORTED)}>
@@ -92,13 +92,13 @@ export function SchemaScreen({ category, query }: { category?: string; query?: s
             </select>
           </div>
           {list.length ? (
-            <div className="grain-list">
+            <div className="tidbit-list">
               {list.map((s) => (
-                <GrainRow key={s.id} grain={s} now={now} />
+                <TidbitRow key={s.id} tidbit={s} now={now} />
               ))}
             </div>
           ) : (
-            <p className="muted center">No grains match.</p>
+            <p className="muted center">No tidbits match.</p>
           )}
         </div>
       </div>
