@@ -36,7 +36,8 @@ export function useNow(): string {
 
 export type Route =
   | { name: 'capture' }
-  | { name: 'sort' }
+  | { name: 'organize' }
+  | { name: 'about' }
   | { name: 'review' }
   | { name: 'schema'; category?: string; query?: string }
   | { name: 'grain'; id: string }
@@ -47,8 +48,11 @@ export function parseRoute(hash: string): Route {
   const params = new URLSearchParams(qs);
   const [head, arg] = path.split('/');
   switch (head) {
-    case 'sort':
-      return { name: 'sort' };
+    case 'organize':
+    case 'sort': // old name
+      return { name: 'organize' };
+    case 'about':
+      return { name: 'about' };
     case 'review':
       return { name: 'review' };
     case 'schema':

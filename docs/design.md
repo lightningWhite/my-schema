@@ -335,6 +335,21 @@ A static PWA can't reliably schedule its own notifications. Plan:
 3. **Later:** Web Push from the same free Cloudflare Worker on a daily cron. The
    worker only needs a push subscription and a time of day, never grain content.
 
+
+### 4.3 In passing
+
+Review is deliberate; some reminding should be effortless. Along the bottom of
+the home screen, a thin strip of past grains drifts slowly by, in case one
+catches your eye while you're there to capture something new. Nothing is
+asked and nothing is recorded — it is not a review.
+
+- Active grains only, picked at random but weighted toward ones you haven't
+  touched in a while (pure function in core, randomness injected).
+- Picked once per visit, so it doesn't reshuffle as you save.
+- Quiet by design: low contrast, fades further while you type, pauses on hover
+  or touch, tap a grain to open it. Holds still (scroll by hand) when the
+  device asks for reduced motion. Hidden until there are at least three grains.
+
 ---
 
 ## 5. Sharing and lineage
@@ -441,11 +456,15 @@ each with a count badge where it helps:
 | Tab | What it's for |
 |---|---|
 | **Capture** | The home input above. |
-| **Sort** | The Unsorted inbox: grains with no category (or no kind). One at a time, with the same quick chips. Swipe through them in a minute. |
+| **Organize** | The Unsorted inbox: grains with no category (or no kind). One at a time, with the same quick chips. Swipe through them in a minute. |
 | **Review** | Today's handful of grains (§4): Still true · Revise · Retire · Skip. |
 | **Schema** | Everything you have: category tree, filters by kind/status/tag, search. Opens a grain's page with its full history. |
 | **Explore** | (Phase 2) Other people's public schemas; plant grains into yours. |
-| **Settings** | Export/import, GitHub setup (Phase 1), review size. |
+| **Settings** | Style, export/import, GitHub setup (Phase 1), review size. |
+
+An **About** page, linked under the tagline on the home screen and from
+Settings, explains the idea in plain words: why, what a schema is, how the
+loop works, the kinds, and where your data lives.
 
 ### 6.3 Two styles
 

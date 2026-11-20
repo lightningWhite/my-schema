@@ -150,6 +150,13 @@ export function SettingsScreen({ theme, onTheme }: { theme: Theme; onTheme: (t: 
       </section>
 
       <section className="settings-section">
+        <h2>About</h2>
+        <p className="muted">
+          What Schema is for and how it works. <a href="#/about">Read about Schema</a>
+        </p>
+      </section>
+
+      <section className="settings-section">
         <h2>Coming next</h2>
         <ul className="muted">
           <li>Sync to a private GitHub repo, so your schema is backed up and on every device.</li>

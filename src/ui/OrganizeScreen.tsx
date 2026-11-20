@@ -1,5 +1,5 @@
 /**
- * The Unsorted inbox: grains with no category, one at a time, oldest first.
+ * Organize: the Unsorted inbox — grains with no category, one at a time, oldest first.
  * Pick a category (and a kind if it has none) and it moves on to the next.
  */
 import { useMemo, useState } from 'react';
@@ -11,7 +11,7 @@ import { cmpAt } from '../core/time';
 import { relativeDate, plural } from './format';
 import { CategoryPicker, Empty, KindChips, GrainText } from './parts';
 
-export function SortScreen() {
+export function OrganizeScreen() {
   const grains = useGrains();
   const now = useNow();
   const [skipped, setSkipped] = useState<string[]>([]);
@@ -32,9 +32,9 @@ export function SortScreen() {
     return (
       <div className="screen narrow">
         <header className="screen-header">
-          <h1>Sort</h1>
+          <h1>Organize</h1>
         </header>
-        <Empty title={queue.length ? 'Nothing else to sort right now' : 'Everything is filed'}>
+        <Empty title={queue.length ? 'Nothing else to organize right now' : 'Everything is filed'}>
           {queue.length ? (
             <button className="button" onClick={() => setSkipped([])}>
               Go back to the {plural(queue.length, 'skipped grain')}
@@ -51,10 +51,10 @@ export function SortScreen() {
   return (
     <div className="screen narrow">
       <header className="screen-header">
-        <h1>Sort</h1>
+        <h1>Organize</h1>
         <span className="header-count">{pending.length} left</span>
       </header>
-      <article className="card sort-card" key={grain.id}>
+      <article className="card organize-card" key={grain.id}>
         <div className="card-meta">
           Captured {relativeDate(createdAt(grain), now)} · <a href={href({ name: 'grain', id: grain.id })}>Open</a>
         </div>

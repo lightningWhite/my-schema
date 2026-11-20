@@ -7,13 +7,14 @@ import { Icon, Logo, type IconName } from '../ui/parts';
 import { ReviewScreen } from '../ui/ReviewScreen';
 import { GrainScreen } from '../ui/GrainScreen';
 import { SettingsScreen } from '../ui/SettingsScreen';
-import { SortScreen } from '../ui/SortScreen';
+import { OrganizeScreen } from '../ui/OrganizeScreen';
+import { AboutScreen } from '../ui/AboutScreen';
 import { useTheme } from './theme';
 import { href, useNow, useReviewState, useRoute, useGrains, useSettings, type Route } from './hooks';
 
 const TABS: Array<{ route: Route; label: string; icon: IconName }> = [
   { route: { name: 'capture' }, label: 'Capture', icon: 'capture' },
-  { route: { name: 'sort' }, label: 'Sort', icon: 'sort' },
+  { route: { name: 'organize' }, label: 'Organize', icon: 'organize' },
   { route: { name: 'review' }, label: 'Review', icon: 'review' },
   { route: { name: 'schema' }, label: 'Schema', icon: 'schema' },
   { route: { name: 'settings' }, label: 'Settings', icon: 'settings' },
@@ -29,7 +30,7 @@ export function App() {
 
   const badges: Partial<Record<Route['name'], number>> = {};
   if (grains && review) {
-    badges.sort = grains.filter((s) => s.status === 'active' && isUnsorted(s)).length;
+    badges.organize = grains.filter((s) => s.status === 'active' && isUnsorted(s)).length;
     badges.review = dueCount(grains, review, now, { size: settings.reviewSize, focus: settings.reviewFocus });
   }
   // App icon badge where supported (installed PWAs).
@@ -59,7 +60,8 @@ export function App() {
       </nav>
       <main className="main">
         {route.name === 'capture' && <CaptureScreen />}
-        {route.name === 'sort' && <SortScreen />}
+        {route.name === 'organize' && <OrganizeScreen />}
+        {route.name === 'about' && <AboutScreen />}
         {route.name === 'review' && <ReviewScreen />}
         {route.name === 'schema' && <SchemaScreen key={route.category ?? ''} category={route.category} query={route.query} />}
         {route.name === 'grain' && <GrainScreen key={route.id} id={route.id} />}

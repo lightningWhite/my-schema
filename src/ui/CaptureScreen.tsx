@@ -7,17 +7,19 @@
  */
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { capture, editMeta, reviseGrain } from '../app/actions';
-import { href, useGrains } from '../app/hooks';
+import { href, useGrains, useNow } from '../app/hooks';
 import { allCategories, recentCategories } from '../core/categories';
 import { KIND_INFO, suggestKind } from '../core/kinds';
 import { similarGrains } from '../core/search';
 import { currentRevision, displayTitle, SOFT_LENGTH } from '../core/grain';
 import type { Kind, Grain } from '../core/types';
 import { GrainEditor } from './GrainEditor';
+import { PassingStrip } from './PassingStrip';
 import { CategoryPicker, ConfidenceChips, Icon, KindBadge, KindChips, Logo } from './parts';
 
 export function CaptureScreen() {
   const grains = useGrains() ?? [];
+  const now = useNow();
   const [text, setText] = useState('');
   const [justSaved, setJustSaved] = useState<string | null>(null);
   const [expanded, setExpanded] = useState(false);
@@ -73,13 +75,15 @@ export function CaptureScreen() {
   }
 
   return (
-    <div className="screen capture">
+    <div className={`screen capture${grains.length ? ' has-passing' : ''}`}>
       <div className="capture-hero">
         <div className="brand">
           <Logo size={34} />
           <span>Schema</span>
         </div>
-        <p className="tagline">Turn passing tidbits into guideposts.</p>
+        <p className="tagline">
+          Turn passing tidbits into guideposts. <a href={href({ name: 'about' })}>About</a>
+        </p>
 
         <form
           className="capture-box"
@@ -133,6 +137,7 @@ export function CaptureScreen() {
           </section>
         )}
       </div>
+      <PassingStrip grains={grains} now={now} quiet={text.trim().length > 0} exclude={justSaved ? [justSaved] : []} />
     </div>
   );
 }

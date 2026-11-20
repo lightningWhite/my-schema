@@ -9,7 +9,7 @@ import { relativeDate } from './format';
 
 const PATHS = {
   capture: 'M12 5v14M5 12h14',
-  sort: 'M4 6h16M7 12h10M10 18h4',
+  organize: 'M4 6h16M7 12h10M10 18h4',
   review: 'M4 12a8 8 0 1 0 2.3-5.6M4 4v4h4',
   // Linked nodes, matching the logo.
   schema: 'M8.4 7.6l7.4 1.6M16.2 11.4l-5.4 5.4M7.4 9.8l1.6 5.6M6.5 4.5a2.8 2.8 0 1 1 0 5.6a2.8 2.8 0 1 1 0-5.6zM17.5 7.2a2.5 2.5 0 1 1 0 5a2.5 2.5 0 1 1 0-5zM9 15.5a2.5 2.5 0 1 1 0 5a2.5 2.5 0 1 1 0-5z',

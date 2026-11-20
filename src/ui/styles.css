@@ -1201,3 +1201,181 @@ kbd {
   color: var(--ink);
   font-weight: 600;
 }
+
+/* ------------------------------------------------------------ passing strip */
+
+.passing {
+  --passing-h: 40px;
+  position: fixed;
+  z-index: 5;
+  left: 0;
+  right: 0;
+  bottom: calc(var(--tab-h) + env(safe-area-inset-bottom));
+  height: var(--passing-h);
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  border-top: 1px solid var(--line);
+  background: color-mix(in srgb, var(--bg) 85%, transparent);
+  backdrop-filter: blur(8px);
+  /* Soft edges, so grains drift in and out rather than appearing at a hard line. */
+  mask-image: linear-gradient(to right, transparent, #000 8%, #000 92%, transparent);
+  opacity: 0.85;
+  transition: opacity 0.4s;
+}
+.passing.quiet {
+  opacity: 0.3;
+}
+.passing:hover,
+.passing:focus-within {
+  opacity: 1;
+}
+@media (min-width: 760px) {
+  .passing {
+    left: 88px;
+    bottom: 0;
+  }
+}
+
+.passing-track {
+  display: flex;
+  flex: none;
+  gap: 36px;
+  padding-right: 36px;
+  white-space: nowrap;
+  animation: passing linear infinite;
+}
+.passing:hover .passing-track,
+.passing:focus-within .passing-track,
+.passing:active .passing-track {
+  animation-play-state: paused;
+}
+@keyframes passing {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    /* The row is doubled, so moving half the width loops seamlessly. */
+    transform: translateX(-50%);
+  }
+}
+
+.passing-item {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 8px;
+  color: var(--ink-2);
+  font-size: 0.88rem;
+}
+.passing-item:hover {
+  color: var(--ink);
+  text-decoration: none;
+}
+.passing-item::before {
+  content: '';
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--accent);
+  opacity: 0.6;
+  align-self: center;
+}
+.passing-kind {
+  font-family: var(--meta-font);
+  font-size: 0.68rem;
+  font-weight: 650;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+}
+.passing-text {
+  font-family: var(--text-font);
+}
+
+/* No drifting for people who ask for less motion: the strip scrolls by hand. */
+@media (prefers-reduced-motion: reduce) {
+  .passing {
+    overflow-x: auto;
+    mask-image: none;
+  }
+  .passing-track {
+    animation: none;
+    padding-left: 16px;
+  }
+  .passing-track > [aria-hidden='true'] {
+    display: none;
+  }
+}
+
+.screen.capture.has-passing {
+  padding-bottom: 56px;
+}
+
+.tagline a {
+  margin-left: 6px;
+  font-size: 0.85rem;
+  font-style: normal;
+  font-family: var(--font);
+}
+
+/* ------------------------------------------------------------ about */
+
+.about section {
+  margin-top: 28px;
+}
+.about h2 {
+  font-size: 1.1rem;
+  margin-bottom: 8px;
+}
+.about p,
+.about dd {
+  color: var(--ink-2);
+  line-height: 1.65;
+}
+.about-hero {
+  text-align: center;
+  margin: 4px 0 8px;
+}
+.about-hero h1 {
+  font-family: var(--brand-font);
+  font-size: 2rem;
+  margin-top: 12px;
+}
+.about-lead {
+  font-family: var(--text-font);
+  font-size: 1.2rem;
+  color: var(--ink) !important;
+  margin: 8px auto 0;
+  max-width: 30em;
+}
+:root[data-style='reflect'] .about-lead {
+  font-style: italic;
+}
+.about-steps dt {
+  font-weight: 650;
+  margin-top: 14px;
+}
+.about-steps dd {
+  margin: 2px 0 0;
+}
+.about-kinds {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 12px;
+  display: grid;
+  gap: 8px;
+}
+.about-kinds li {
+  display: grid;
+  grid-template-columns: 110px 1fr;
+  align-items: baseline;
+  gap: 10px;
+  color: var(--ink-2);
+}
+.about-kinds .kind-badge {
+  justify-self: start;
+}
+.about-foot {
+  text-align: center;
+  margin: 36px 0 12px;
+}
