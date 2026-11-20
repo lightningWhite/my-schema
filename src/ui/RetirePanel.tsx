@@ -1,10 +1,10 @@
-/** Retiring a seed: let it go dormant, or replace it with a different idea. */
+/** Retiring a grain: let it go dormant, or replace it with a different idea. */
 import { useState } from 'react';
-import { dormantSeed, succeedSeed } from '../app/actions';
-import type { Seed } from '../core/types';
-import { SeedEditor } from './SeedEditor';
+import { dormantGrain, succeedGrain } from '../app/actions';
+import type { Grain } from '../core/types';
+import { GrainEditor } from './GrainEditor';
 
-export function RetirePanel({ seed, categories, onDone, onCancel }: { seed: Seed; categories: string[]; onDone: (successorId?: string) => void; onCancel: () => void }) {
+export function RetirePanel({ grain, categories, onDone, onCancel }: { grain: Grain; categories: string[]; onDone: (successorId?: string) => void; onCancel: () => void }) {
   const [mode, setMode] = useState<'choose' | 'dormant' | 'succeed'>('choose');
   const [why, setWhy] = useState('');
 
@@ -12,15 +12,15 @@ export function RetirePanel({ seed, categories, onDone, onCancel }: { seed: Seed
     return (
       <div className="panel">
         <h3>Replace it with a new idea</h3>
-        <p className="muted">The old seed stays in your bank, marked as succeeded and linked to the new one.</p>
-        <SeedEditor
+        <p className="muted">The old grain stays in your schema, marked as succeeded and linked to the new one.</p>
+        <GrainEditor
           mode="succeed"
-          initial={{ text: '', kind: seed.kind, category: seed.category, tags: seed.tags }}
+          initial={{ text: '', kind: grain.kind, category: grain.category, tags: grain.tags }}
           categories={categories}
           saveLabel="Save new idea"
           onCancel={() => setMode('choose')}
           onSave={async ({ why: w, ...input }) => {
-            const successor = await succeedSeed(seed.id, input, w);
+            const successor = await succeedGrain(grain.id, input, w);
             onDone(successor.id);
           }}
         />
@@ -34,12 +34,12 @@ export function RetirePanel({ seed, categories, onDone, onCancel }: { seed: Seed
         className="panel"
         onSubmit={async (e) => {
           e.preventDefault();
-          await dormantSeed(seed.id, why);
+          await dormantGrain(grain.id, why);
           onDone();
         }}
       >
         <h3>Let it go dormant</h3>
-        <p className="muted">You don't hold this anymore and nothing replaces it. It stays in your bank, out of reviews.</p>
+        <p className="muted">You don't hold this anymore and nothing replaces it. It stays in your schema, out of reviews.</p>
         <label className="field">
           <span className="field-label">Why? (optional, but future you will want to know)</span>
           <input autoFocus value={why} onChange={(e) => setWhy(e.target.value)} />
@@ -58,7 +58,7 @@ export function RetirePanel({ seed, categories, onDone, onCancel }: { seed: Seed
 
   return (
     <div className="panel">
-      <h3>Retire this seed</h3>
+      <h3>Retire this grain</h3>
       <div className="choice-list">
         <button className="choice" onClick={() => setMode('succeed')}>
           <strong>A different idea replaces it</strong>

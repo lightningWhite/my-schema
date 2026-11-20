@@ -1,12 +1,12 @@
 /**
- * Seed operations. Each takes the current seed and returns a new one; nothing
+ * Grain operations. Each takes the current grain and returns a new one; nothing
  * is mutated. History is append-only (CLAUDE.md rule 3): these functions only
  * ever add entries.
  */
 import { laterAt, strictlyAfter } from './time';
-import type { Confidence, Ctx, HistoryEntry, Kind, Link, LinkType, Origin, Revision, Seed } from './types';
+import type { Confidence, Ctx, HistoryEntry, Kind, Link, LinkType, Origin, Revision, Grain } from './types';
 
-export interface NewSeed {
+export interface NewGrain {
   text: string;
   title?: string;
   kind?: Kind;
@@ -17,13 +17,13 @@ export interface NewSeed {
   origin?: Origin;
 }
 
-export function createSeed(ctx: Ctx, input: NewSeed): Seed {
+export function createGrain(ctx: Ctx, input: NewGrain): Grain {
   const text = cleanText(input.text);
-  if (!text) throw new Error('A seed needs some text');
+  if (!text) throw new Error('A grain needs some text');
   const at = ctx.now();
   const revision: Revision = { type: 'revision', at, text };
   if (input.confidence) revision.confidence = input.confidence;
-  const seed: Seed = {
+  const grain: Grain = {
     id: ctx.newId(),
     status: 'active',
     tags: normalizeTags(input.tags ?? []),
@@ -34,42 +34,42 @@ export function createSeed(ctx: Ctx, input: NewSeed): Seed {
     extra: {},
   };
   const title = cleanOptional(input.title);
-  if (title) seed.title = title;
-  if (input.kind) seed.kind = input.kind;
+  if (title) grain.title = title;
+  if (input.kind) grain.kind = input.kind;
   const category = normalizeCategory(input.category);
-  if (category) seed.category = category;
+  if (category) grain.category = category;
   const source = cleanOptional(input.source);
-  if (source) seed.source = source;
-  return seed;
+  if (source) grain.source = source;
+  return grain;
 }
 
 // ---------------------------------------------------------------- reading
 
-export function currentRevision(seed: Seed): Revision {
-  const rev = seed.history.find((e): e is Revision => e.type === 'revision');
-  if (!rev) throw new Error(`Seed ${seed.id} has no revisions`);
+export function currentRevision(grain: Grain): Revision {
+  const rev = grain.history.find((e): e is Revision => e.type === 'revision');
+  if (!rev) throw new Error(`Grain ${grain.id} has no revisions`);
   return rev;
 }
 
-export function revisions(seed: Seed): Revision[] {
-  return seed.history.filter((e): e is Revision => e.type === 'revision');
+export function revisions(grain: Grain): Revision[] {
+  return grain.history.filter((e): e is Revision => e.type === 'revision');
 }
 
-/** What a list shows for a seed: its title, else the first line of its text. */
-export function displayTitle(seed: Seed): string {
-  if (seed.title) return seed.title;
-  const text = currentRevision(seed).text;
+/** What a list shows for a grain: its title, else the first line of its text. */
+export function displayTitle(grain: Grain): string {
+  if (grain.title) return grain.title;
+  const text = currentRevision(grain).text;
   const line = text.split('\n').find((l) => l.trim()) ?? '';
   return line.replace(/^#+\s*/, '').trim();
 }
 
-export function isUnsorted(seed: Seed): boolean {
-  return seed.category === undefined;
+export function isUnsorted(grain: Grain): boolean {
+  return grain.category === undefined;
 }
 
-/** When the seed was first written. */
-export function createdAt(seed: Seed): string {
-  return seed.history[seed.history.length - 1]!.at;
+/** When the grain was first written. */
+export function createdAt(grain: Grain): string {
+  return grain.history[grain.history.length - 1]!.at;
 }
 
 /** Soft length hint threshold (docs/design.md §2.5). */
@@ -84,27 +84,27 @@ export interface RevisionInput {
 }
 
 /**
- * Add a revision. Returns the seed unchanged if neither the text nor the
+ * Add a revision. Returns the grain unchanged if neither the text nor the
  * confidence changed (saving the editor without edits is not a revision).
  */
-export function revise(ctx: Ctx, seed: Seed, input: RevisionInput): Seed {
+export function revise(ctx: Ctx, grain: Grain, input: RevisionInput): Grain {
   const text = cleanText(input.text);
   if (!text) throw new Error('A revision needs some text');
-  const cur = currentRevision(seed);
-  if (text === cur.text && input.confidence === cur.confidence) return seed;
-  const at = nextAt(ctx, seed);
+  const cur = currentRevision(grain);
+  if (text === cur.text && input.confidence === cur.confidence) return grain;
+  const at = nextAt(ctx, grain);
   const rev: Revision = { type: 'revision', at, text };
   if (input.confidence) rev.confidence = input.confidence;
   const why = cleanOptional(input.why);
   if (why) rev.why = why;
-  return { ...seed, history: [rev, ...seed.history], updated: at };
+  return { ...grain, history: [rev, ...grain.history], updated: at };
 }
 
 /** Record "still true" from a review. */
-export function reaffirm(ctx: Ctx, seed: Seed): Seed {
-  const at = nextAt(ctx, seed);
+export function reaffirm(ctx: Ctx, grain: Grain): Grain {
+  const at = nextAt(ctx, grain);
   const entry: HistoryEntry = { type: 'reaffirmation', at };
-  return { ...seed, history: [entry, ...seed.history], updated: at };
+  return { ...grain, history: [entry, ...grain.history], updated: at };
 }
 
 export interface MetaPatch {
@@ -119,72 +119,72 @@ export interface MetaPatch {
  * Change metadata. A field set to null (or an empty string) is cleared;
  * a field left undefined is unchanged.
  */
-export function updateMeta(ctx: Ctx, seed: Seed, patch: MetaPatch): Seed {
-  const next: Seed = { ...seed };
+export function updateMeta(ctx: Ctx, grain: Grain, patch: MetaPatch): Grain {
+  const next: Grain = { ...grain };
   if (patch.title !== undefined) setOrClear(next, 'title', cleanOptional(patch.title ?? undefined));
   if (patch.kind !== undefined) setOrClear(next, 'kind', patch.kind ?? undefined);
   if (patch.category !== undefined) setOrClear(next, 'category', normalizeCategory(patch.category ?? undefined));
   if (patch.source !== undefined) setOrClear(next, 'source', cleanOptional(patch.source ?? undefined));
   if (patch.tags !== undefined) next.tags = normalizeTags(patch.tags);
-  if (sameMeta(seed, next)) return seed;
-  next.updated = nextUpdated(ctx, seed);
+  if (sameMeta(grain, next)) return grain;
+  next.updated = nextUpdated(ctx, grain);
   return next;
 }
 
-/** Retire a seed with nothing replacing it. */
-export function goDormant(ctx: Ctx, seed: Seed, why?: string): Seed {
-  const at = nextUpdated(ctx, seed);
+/** Retire a grain with nothing replacing it. */
+export function goDormant(ctx: Ctx, grain: Grain, why?: string): Grain {
+  const at = nextUpdated(ctx, grain);
   const w = cleanOptional(why);
-  return { ...seed, status: 'dormant', retired: w ? { at, why: w } : { at }, updated: at };
+  return { ...grain, status: 'dormant', retired: w ? { at, why: w } : { at }, updated: at };
 }
 
-/** Bring a dormant or succeeded seed back to active. Its links are kept. */
-export function reactivate(ctx: Ctx, seed: Seed): Seed {
-  if (seed.status === 'active') return seed;
-  const { retired: _retired, ...rest } = seed;
-  return { ...rest, status: 'active', updated: nextUpdated(ctx, seed) };
+/** Bring a dormant or succeeded grain back to active. Its links are kept. */
+export function reactivate(ctx: Ctx, grain: Grain): Grain {
+  if (grain.status === 'active') return grain;
+  const { retired: _retired, ...rest } = grain;
+  return { ...rest, status: 'active', updated: nextUpdated(ctx, grain) };
 }
 
 /**
- * Replace a seed with a different idea. Returns the retired old seed and the
- * new one, linked both ways. The new seed inherits kind and category.
+ * Replace a grain with a different idea. Returns the retired old grain and the
+ * new one, linked both ways. The new grain inherits kind and category.
  */
-export function succeed(ctx: Ctx, old: Seed, input: NewSeed, why?: string): { old: Seed; successor: Seed } {
-  const successor = createSeed(ctx, {
+export function succeed(ctx: Ctx, old: Grain, input: NewGrain, why?: string): { old: Grain; successor: Grain } {
+  const successor = createGrain(ctx, {
     kind: old.kind,
     category: old.category,
     tags: old.tags,
     ...input,
   });
-  successor.links = [{ type: 'succeeds', seed: old.id }];
+  successor.links = [{ type: 'succeeds', grain: old.id }];
   const at = nextUpdated(ctx, old);
   const w = cleanOptional(why);
-  const retiredOld: Seed = {
+  const retiredOld: Grain = {
     ...old,
     status: 'succeeded',
     retired: w ? { at, why: w } : { at },
-    links: [...old.links.filter((l) => l.type !== 'succeededBy'), { type: 'succeededBy', seed: successor.id }],
+    links: [...old.links.filter((l) => l.type !== 'succeededBy'), { type: 'succeededBy', grain: successor.id }],
     updated: at,
   };
   return { old: retiredOld, successor };
 }
 
 /**
- * Start a new seed that grows out of an existing one — e.g. turning the
+ * Start a new grain that grows out of an existing one — e.g. turning the
  * insight "I'm happier on 8 hours of sleep" into the practice "In bed by
- * 10:30". The source keeps a `supports` link to the new seed; the new seed
+ * 10:30". The source keeps a `supports` link to the new grain; the new grain
  * shows it as "supported by" through backlinks. Unlike succeed, the source
  * stays active: both ideas stand.
  */
-export function spinOff(ctx: Ctx, source: Seed, input: NewSeed, type: LinkType = 'supports'): { source: Seed; child: Seed } {
-  const child = createSeed(ctx, { category: source.category, tags: source.tags, ...input });
+export function spinOff(ctx: Ctx, source: Grain, input: NewGrain, type: LinkType = 'supports'): { source: Grain; child: Grain } {
+  const child = createGrain(ctx, { category: source.category, tags: source.tags, ...input });
   return { source: addLink(ctx, source, type, child.id), child };
 }
 
 export interface Connection {
-  /** Phrase describing how `seed` relates to the one being viewed. */
+  /** Phrase describing how `grain` relates to the one being viewed. */
   label: string;
-  seed: Seed;
+  grain: Grain;
 }
 
 const OUTGOING: Record<LinkType, string> = {
@@ -203,36 +203,36 @@ const INCOMING: Record<LinkType, string> = {
 };
 
 /**
- * Every seed connected to `seed`, from its own links and from links other
- * seeds hold to it. Links are stored once, on one side; this reads both.
+ * Every grain connected to `grain`, from its own links and from links other
+ * grains hold to it. Links are stored once, on one side; this reads both.
  */
-export function connections(seed: Seed, all: Seed[]): Connection[] {
+export function connections(grain: Grain, all: Grain[]): Connection[] {
   const byId = new Map(all.map((s) => [s.id, s]));
   const out: Connection[] = [];
   const seen = new Set<string>();
-  const push = (label: string, s: Seed | undefined) => {
-    if (!s || s.id === seed.id) return;
+  const push = (label: string, s: Grain | undefined) => {
+    if (!s || s.id === grain.id) return;
     const key = `${label}:${s.id}`;
     if (seen.has(key)) return;
     seen.add(key);
-    out.push({ label, seed: s });
+    out.push({ label, grain: s });
   };
-  for (const l of seed.links) push(OUTGOING[l.type], byId.get(l.seed));
+  for (const l of grain.links) push(OUTGOING[l.type], byId.get(l.grain));
   for (const other of all) {
-    for (const l of other.links) if (l.seed === seed.id) push(INCOMING[l.type], other);
+    for (const l of other.links) if (l.grain === grain.id) push(INCOMING[l.type], other);
   }
   return out;
 }
 
-export function addLink(ctx: Ctx, seed: Seed, type: LinkType, target: string): Seed {
-  if (target === seed.id || seed.links.some((l) => l.type === type && l.seed === target)) return seed;
-  return { ...seed, links: [...seed.links, { type, seed: target }], updated: nextUpdated(ctx, seed) };
+export function addLink(ctx: Ctx, grain: Grain, type: LinkType, target: string): Grain {
+  if (target === grain.id || grain.links.some((l) => l.type === type && l.grain === target)) return grain;
+  return { ...grain, links: [...grain.links, { type, grain: target }], updated: nextUpdated(ctx, grain) };
 }
 
-export function removeLink(ctx: Ctx, seed: Seed, link: Link): Seed {
-  const links = seed.links.filter((l) => !(l.type === link.type && l.seed === link.seed));
-  if (links.length === seed.links.length) return seed;
-  return { ...seed, links, updated: nextUpdated(ctx, seed) };
+export function removeLink(ctx: Ctx, grain: Grain, link: Link): Grain {
+  const links = grain.links.filter((l) => !(l.type === link.type && l.grain === link.grain));
+  if (links.length === grain.links.length) return grain;
+  return { ...grain, links, updated: nextUpdated(ctx, grain) };
 }
 
 // ---------------------------------------------------------------- normalizing
@@ -267,12 +267,12 @@ function cleanOptional(s: string | undefined): string | undefined {
   return t ? t : undefined;
 }
 
-function setOrClear<K extends 'title' | 'kind' | 'category' | 'source'>(seed: Seed, key: K, value: Seed[K] | undefined) {
-  if (value === undefined) delete seed[key];
-  else seed[key] = value;
+function setOrClear<K extends 'title' | 'kind' | 'category' | 'source'>(grain: Grain, key: K, value: Grain[K] | undefined) {
+  if (value === undefined) delete grain[key];
+  else grain[key] = value;
 }
 
-function sameMeta(a: Seed, b: Seed): boolean {
+function sameMeta(a: Grain, b: Grain): boolean {
   return (
     a.title === b.title &&
     a.kind === b.kind &&
@@ -287,11 +287,11 @@ function sameMeta(a: Seed, b: Seed): boolean {
  * Timestamp for a new history entry: now, but strictly after every existing
  * entry, so the newest-first order holds even if this device's clock is behind.
  */
-function nextAt(ctx: Ctx, seed: Seed): string {
-  const latest = seed.history.reduce((m, e) => laterAt(e.at, m), seed.updated);
+function nextAt(ctx: Ctx, grain: Grain): string {
+  const latest = grain.history.reduce((m, e) => laterAt(e.at, m), grain.updated);
   return strictlyAfter(ctx.now(), latest);
 }
 
-function nextUpdated(ctx: Ctx, seed: Seed): string {
-  return strictlyAfter(ctx.now(), seed.updated);
+function nextUpdated(ctx: Ctx, grain: Grain): string {
+  return strictlyAfter(ctx.now(), grain.updated);
 }

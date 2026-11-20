@@ -1,14 +1,14 @@
 /**
- * Search over a bank, used both by the Bank screen and by the capture box's
+ * Search over a schema, used both by the Schema screen and by the capture box's
  * "you already have something like this" suggestions. Plain word matching,
- * accent- and case-insensitive; good enough for a personal bank of a few
- * thousand seeds, and needs no index.
+ * accent- and case-insensitive; good enough for a personal schema of a few
+ * thousand grains, and needs no index.
  */
-import { currentRevision, displayTitle } from './seed';
-import type { Seed } from './types';
+import { currentRevision, displayTitle } from './grain';
+import type { Grain } from './types';
 
 export interface SearchHit {
-  seed: Seed;
+  grain: Grain;
   score: number;
 }
 
@@ -30,18 +30,18 @@ export function words(s: string): string[] {
 }
 
 /**
- * Seeds matching every query word (prefix match on the last word, so results
+ * Grains matching every query word (prefix match on the last word, so results
  * update while typing). Title and tag matches outrank body matches.
  */
-export function searchSeeds(seeds: Seed[], query: string, limit = 50): SearchHit[] {
+export function searchGrains(grains: Grain[], query: string, limit = 50): SearchHit[] {
   const q = words(query);
   if (!q.length) return [];
   const last = q.length - 1;
   const hits: SearchHit[] = [];
-  for (const seed of seeds) {
-    const title = words(displayTitle(seed));
-    const meta = words([seed.category ?? '', ...seed.tags, seed.source ?? ''].join(' '));
-    const body = words(currentRevision(seed).text);
+  for (const grain of grains) {
+    const title = words(displayTitle(grain));
+    const meta = words([grain.category ?? '', ...grain.tags, grain.source ?? ''].join(' '));
+    const body = words(currentRevision(grain).text);
     let score = 0;
     let all = true;
     for (let i = 0; i < q.length; i++) {
@@ -55,30 +55,30 @@ export function searchSeeds(seeds: Seed[], query: string, limit = 50): SearchHit
       score += s;
     }
     if (all) {
-      if (seed.status !== 'active') score *= 0.5;
-      hits.push({ seed, score });
+      if (grain.status !== 'active') score *= 0.5;
+      hits.push({ grain, score });
     }
   }
-  hits.sort((a, b) => b.score - a.score || b.seed.updated.localeCompare(a.seed.updated));
+  hits.sort((a, b) => b.score - a.score || b.grain.updated.localeCompare(a.grain.updated));
   return hits.slice(0, limit);
 }
 
 /**
- * Seeds similar to a draft being typed: at least half of the draft's words
- * (and at least two) appear in the seed. Powers "already in your bank?".
+ * Grains similar to a draft being typed: at least half of the draft's words
+ * (and at least two) appear in the grain. Powers "already in your schema?".
  */
-export function similarSeeds(seeds: Seed[], draft: string, limit = 3): Seed[] {
+export function similarGrains(grains: Grain[], draft: string, limit = 3): Grain[] {
   const q = [...new Set(words(draft))];
-  if (q.length < 2) return searchSeeds(seeds, draft, limit).map((h) => h.seed);
+  if (q.length < 2) return searchGrains(grains, draft, limit).map((h) => h.grain);
   const need = Math.max(2, Math.ceil(q.length / 2));
-  return seeds
-    .map((seed) => {
-      const ws = new Set(words(`${displayTitle(seed)} ${currentRevision(seed).text} ${seed.tags.join(' ')}`));
+  return grains
+    .map((grain) => {
+      const ws = new Set(words(`${displayTitle(grain)} ${currentRevision(grain).text} ${grain.tags.join(' ')}`));
       const n = q.filter((w, i) => ws.has(w) || (i === q.length - 1 && [...ws].some((x) => x.startsWith(w)))).length;
-      return { seed, n };
+      return { grain, n };
     })
     .filter((x) => x.n >= need)
-    .sort((a, b) => b.n - a.n || b.seed.updated.localeCompare(a.seed.updated))
+    .sort((a, b) => b.n - a.n || b.grain.updated.localeCompare(a.grain.updated))
     .slice(0, limit)
-    .map((x) => x.seed);
+    .map((x) => x.grain);
 }

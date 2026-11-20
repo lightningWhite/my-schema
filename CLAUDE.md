@@ -4,8 +4,8 @@ Guidance for Claude Code (and other AI assistants) working in this repository.
 
 ## What this project is
 
-Seedbank is a local-first PWA for capturing evolving ideas, beliefs, lessons and
-observations ("seeds"), revising them over time, resurfacing them for review, and
+Schema is a local-first PWA for capturing evolving ideas, beliefs, lessons and
+observations ("grains"), revising them over time, resurfacing them for review, and
 optionally sharing them. There is no backend: the app is static on GitHub Pages,
 and each user's data lives in their own GitHub repos.
 
@@ -16,21 +16,21 @@ truth for intended design.
 
 1. **`src/core` is pure.** No `fetch`, IndexedDB, `Date.now()`, `Math.random()`,
    or DOM. The clock and ID generator are injected. Core is where the rules live
-   (seed model, revisions, merge, review scheduling, file format), and it must be
+   (grain model, revisions, merge, review scheduling, file format), and it must be
    testable without mocks.
-2. **Seed files are the source of truth.** `seeds/<id>.md` in the user's repo.
+2. **Grain files are the source of truth.** `grains/<id>.md` in the user's repo.
    `index.json` and IndexedDB are derived caches and must always be rebuildable
-   from `seeds/` alone.
+   from `grains/` alone.
 3. **Revisions are append-only.** Never edit or remove an existing revision. The
-   only exception is the user explicitly deleting a whole seed.
+   only exception is the user explicitly deleting a whole grain.
 4. **Private never leaks.** Only the explicit Publish flow may write to a public
-   repo, and this is enforced by types (a `PublishedSeed` brand), not by
+   repo, and this is enforced by types (a `PublishedGrain` brand), not by
    convention.
 5. **No third parties.** User data goes only to the device and the user's own
    GitHub repos. No analytics, telemetry, CDN scripts, or remote fonts.
 6. **Round-trip safe.** `parse(serialize(x))` must equal `x`, and unknown
    frontmatter fields must be preserved. Property-tested.
-7. **Never write to a bank with a newer `formatVersion`** than the app
+7. **Never write to a schema with a newer `formatVersion`** than the app
    understands. Reading it is fine.
 
 ## Layout

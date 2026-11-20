@@ -6,7 +6,7 @@
  */
 import { useEffect, useRef, useState } from 'react';
 import { KIND_INFO } from '../core/kinds';
-import { SOFT_LENGTH, type NewSeed } from '../core/seed';
+import { SOFT_LENGTH, type NewGrain } from '../core/grain';
 import type { Confidence, Kind } from '../core/types';
 import { CategoryPicker, ConfidenceChips, KindChips, TagsField } from './parts';
 
@@ -27,11 +27,11 @@ interface Props {
   categories?: string[];
   recentCategories?: string[];
   saveLabel?: string;
-  onSave: (v: NewSeed & { why?: string }) => void | Promise<void>;
+  onSave: (v: NewGrain & { why?: string }) => void | Promise<void>;
   onCancel: () => void;
 }
 
-export function SeedEditor({ mode, initial, categories = [], recentCategories = [], saveLabel, onSave, onCancel }: Props) {
+export function GrainEditor({ mode, initial, categories = [], recentCategories = [], saveLabel, onSave, onCancel }: Props) {
   const [v, setV] = useState<EditorValue>(initial);
   const [busy, setBusy] = useState(false);
   const textRef = useRef<HTMLTextAreaElement>(null);
@@ -89,10 +89,10 @@ export function SeedEditor({ mode, initial, categories = [], recentCategories = 
         value={v.text}
         placeholder={mode === 'succeed' ? 'The idea that replaces it…' : 'Write it down…'}
         onChange={(e) => set({ text: e.target.value })}
-        aria-label="Seed text"
+        aria-label="Grain text"
       />
       {v.text.length > SOFT_LENGTH && (
-        <div className="soft-limit">Seeds work best short — maybe a title and a summary first line? Long is fine if it needs it.</div>
+        <div className="soft-limit">Grains work best short — maybe a title and a summary first line? Long is fine if it needs it.</div>
       )}
 
       {(mode === 'revise' || mode === 'succeed') && (
@@ -134,7 +134,7 @@ export function SeedEditor({ mode, initial, categories = [], recentCategories = 
           Cancel
         </button>
         <button type="submit" className="button primary" disabled={!canSave}>
-          {saveLabel ?? (mode === 'revise' ? 'Save revision' : 'Save seed')}
+          {saveLabel ?? (mode === 'revise' ? 'Save revision' : 'Save grain')}
         </button>
       </div>
     </form>

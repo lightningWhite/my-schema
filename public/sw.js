@@ -1,11 +1,11 @@
-// Seedbank service worker: makes the app work offline.
+// Schema service worker: makes the app work offline.
 //
 // Navigations: network first (so a new deploy shows up), falling back to the
 // cached app shell. Other same-origin GETs: cache first, then network, and
 // whatever comes back is cached. Built assets have hashed names, so a cached
 // file is never stale. Requests to other origins are never touched.
 
-const CACHE = 'seedbank-v1';
+const CACHE = 'schema-v1';
 
 self.addEventListener('install', (event) => {
   event.waitUntil(caches.open(CACHE).then((c) => c.addAll(['./', './index.html', './manifest.webmanifest', './icon.svg'])));

@@ -1,12 +1,12 @@
 {
-  "name": "Seedbank",
-  "short_name": "Seedbank",
-  "description": "Keep what you've come to believe, notice and learn — and let it grow.",
+  "name": "Schema",
+  "short_name": "Schema",
+  "description": "Turn tidbits in passing into guideposts.",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",
-  "background_color": "#f6f3ec",
-  "theme_color": "#3c7a47",
+  "background_color": "#f3f5f8",
+  "theme_color": "#0f766e",
   "icons": [
     { "src": "icon.svg", "sizes": "any", "type": "image/svg+xml" },
     { "src": "icon-192.png", "sizes": "192x192", "type": "image/png" },

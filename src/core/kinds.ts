@@ -51,7 +51,7 @@ const STARTS: Array<[RegExp, Kind]> = [
 ];
 
 /**
- * Guess a kind from the text of a new seed, or undefined when there's no
+ * Guess a kind from the text of a new grain, or undefined when there's no
  * good guess. Only a suggestion: the UI pre-selects it and the user can
  * change it. Deliberately conservative — a wrong guess is worse than none.
  */

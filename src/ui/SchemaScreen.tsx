@@ -1,67 +1,67 @@
-/** Everything in the bank: category tree, filters and search. */
+/** Everything in the schema: category tree, filters and search. */
 import { useMemo, useState } from 'react';
-import { navigate, useNow, useSeeds } from '../app/hooks';
+import { navigate, useNow, useGrains } from '../app/hooks';
 import { categoryTree, type CategoryNode } from '../core/categories';
 import { KIND_INFO } from '../core/kinds';
-import { searchSeeds } from '../core/search';
-import { isUnsorted } from '../core/seed';
+import { searchGrains } from '../core/search';
+import { isUnsorted } from '../core/grain';
 import { cmpAt } from '../core/time';
-import { KINDS, type Kind, type Seed } from '../core/types';
+import { KINDS, type Kind, type Grain } from '../core/types';
 import { plural } from './format';
-import { Chip, Empty, SeedRow } from './parts';
+import { Chip, Empty, GrainRow } from './parts';
 
 type StatusFilter = 'active' | 'retired' | 'all';
 const UNSORTED = '\u0000unsorted';
 
-export function BankScreen({ category, query }: { category?: string; query?: string }) {
-  const seeds = useSeeds();
+export function SchemaScreen({ category, query }: { category?: string; query?: string }) {
+  const grains = useGrains();
   const now = useNow();
   const [q, setQ] = useState(query ?? '');
   const [kind, setKind] = useState<Kind | undefined>();
   const [status, setStatus] = useState<StatusFilter>('active');
 
-  const setCategory = (c: string | undefined) => navigate({ name: 'bank', category: c, query: q || undefined }, true);
+  const setCategory = (c: string | undefined) => navigate({ name: 'schema', category: c, query: q || undefined }, true);
 
-  const tree = useMemo(() => categoryTree(seeds ?? []), [seeds]);
+  const tree = useMemo(() => categoryTree(grains ?? []), [grains]);
   const list = useMemo(() => {
-    let out: Seed[] = seeds ?? [];
+    let out: Grain[] = grains ?? [];
     if (status === 'active') out = out.filter((s) => s.status === 'active');
     else if (status === 'retired') out = out.filter((s) => s.status !== 'active');
     if (kind) out = out.filter((s) => s.kind === kind);
     if (category === UNSORTED) out = out.filter(isUnsorted);
     else if (category) out = out.filter((s) => s.category === category || s.category?.startsWith(category + '/'));
-    if (q.trim()) return searchSeeds(out, q, 500).map((h) => h.seed);
+    if (q.trim()) return searchGrains(out, q, 500).map((h) => h.grain);
     return [...out].sort((a, b) => cmpAt(b.updated, a.updated));
-  }, [seeds, status, kind, category, q]);
+  }, [grains, status, kind, category, q]);
 
-  if (!seeds) return null;
-  if (seeds.length === 0) {
+  if (!grains) return null;
+  if (grains.length === 0) {
     return (
       <div className="screen">
         <header className="screen-header">
-          <h1>Bank</h1>
+          <h1>Schema</h1>
         </header>
-        <Empty title="Your bank is empty">
+        <Empty title="Your schema is empty">
           <p>
-            <a href="#/">Capture your first seed</a> — something you've noticed, learned or come to believe.
+            <a href="#/">Capture your first grain</a> — something you've noticed, learned or come to believe.
           </p>
         </Empty>
       </div>
     );
   }
 
-  const unsortedCount = seeds.filter((s) => s.status === 'active' && isUnsorted(s)).length;
+  const unsortedCount = grains.filter((s) => s.status === 'active' && isUnsorted(s)).length;
 
   return (
-    <div className="screen bank">
+    <div className="screen schema">
       <header className="screen-header">
-        <h1>Bank</h1>
-        <span className="header-count">{plural(seeds.length, 'seed')}</span>
+        <h1>Schema</h1>
+        <span className="header-count">{plural(grains.length, 'grain')}</span>
       </header>
-      <div className="bank-layout">
+      <div className="schema-layout">
         <nav className="tree" aria-label="Categories">
           <button className={`tree-item${!category ? ' selected' : ''}`} onClick={() => setCategory(undefined)}>
-            <span>All seeds</span>
+            <span>All grains</span>
           </button>
           {unsortedCount > 0 && (
             <button className={`tree-item${category === UNSORTED ? ' selected' : ''}`} onClick={() => setCategory(UNSORTED)}>
@@ -73,8 +73,8 @@ export function BankScreen({ category, query }: { category?: string; query?: str
             <TreeNode key={n.path} node={n} selected={category} onSelect={setCategory} depth={0} />
           ))}
         </nav>
-        <div className="bank-main">
-          <input className="search" type="search" placeholder="Search your bank" value={q} onChange={(e) => setQ(e.target.value)} aria-label="Search" />
+        <div className="schema-main">
+          <input className="search" type="search" placeholder="Search your schema" value={q} onChange={(e) => setQ(e.target.value)} aria-label="Search" />
           <div className="filters">
             <div className="chips">
               {KINDS.map((k) => (
@@ -90,13 +90,13 @@ export function BankScreen({ category, query }: { category?: string; query?: str
             </select>
           </div>
           {list.length ? (
-            <div className="seed-list">
+            <div className="grain-list">
               {list.map((s) => (
-                <SeedRow key={s.id} seed={s} now={now} />
+                <GrainRow key={s.id} grain={s} now={now} />
               ))}
             </div>
           ) : (
-            <p className="muted center">No seeds match.</p>
+            <p className="muted center">No grains match.</p>
           )}
         </div>
       </div>

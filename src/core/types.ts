@@ -1,5 +1,5 @@
 /**
- * The seed model. See docs/design.md §2.
+ * The grain model. See docs/design.md §2.
  *
  * Everything here is plain data: JSON-serializable, no classes, no Dates.
  * Timestamps are ISO 8601 UTC strings; IDs are ULIDs.
@@ -30,17 +30,17 @@ export type LinkType = (typeof LINK_TYPES)[number];
 
 export interface Link {
   type: LinkType;
-  seed: string;
+  grain: string;
 }
 
-/** Where a planted seed came from (§5.2). */
+/** Where a planted grain came from (§5.2). */
 export interface Origin {
-  bank: string;
-  seed: string;
+  repo: string;
+  grain: string;
   revision: string;
 }
 
-/** Why and when a seed went dormant or was succeeded. */
+/** Why and when a grain went dormant or was succeeded. */
 export interface Retirement {
   at: string;
   why?: string;
@@ -62,7 +62,7 @@ export interface Reaffirmation {
 
 export type HistoryEntry = Revision | Reaffirmation;
 
-export interface Seed {
+export interface Grain {
   id: string;
   title?: string;
   kind?: Kind;

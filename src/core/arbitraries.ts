@@ -1,6 +1,6 @@
 /** fast-check generators for property tests. Not imported by app code. */
 import fc from 'fast-check';
-import { CONFIDENCES, KINDS, LINK_TYPES, STATUSES, type HistoryEntry, type Seed } from './types';
+import { CONFIDENCES, KINDS, LINK_TYPES, STATUSES, type HistoryEntry, type Grain } from './types';
 import { encodeUlid } from './ulid';
 
 /** Text that tries hard to break the file format. */
@@ -70,7 +70,7 @@ const arbExtraValue = fc.oneof(
   fc.dictionary(fc.stringMatching(/^[a-z]{1,5}$/), fc.string({ maxLength: 5 }), { maxKeys: 2 }),
 );
 
-export const arbSeed: fc.Arbitrary<Seed> = fc
+export const arbGrain: fc.Arbitrary<Grain> = fc
   .record(
     {
       id: arbId,
@@ -79,8 +79,8 @@ export const arbSeed: fc.Arbitrary<Seed> = fc
       status: fc.constantFrom(...STATUSES),
       category: arbShort,
       tags: fc.array(arbShort, { maxLength: 4 }),
-      links: fc.array(fc.record({ type: fc.constantFrom(...LINK_TYPES), seed: arbId }), { maxLength: 3 }),
-      origin: fc.option(fc.record({ bank: arbShort, seed: arbId, revision: arbAt }), { nil: null }),
+      links: fc.array(fc.record({ type: fc.constantFrom(...LINK_TYPES), grain: arbId }), { maxLength: 3 }),
+      origin: fc.option(fc.record({ repo: arbShort, grain: arbId, revision: arbAt }), { nil: null }),
       source: arbShort,
       retired: fc.record({ at: arbAt, why: arbShort }, { requiredKeys: ['at'] }),
       updated: arbAt,

@@ -1,34 +1,36 @@
 import { useEffect } from 'react';
 import { dueCount } from '../core/review';
-import { isUnsorted } from '../core/seed';
-import { BankScreen } from '../ui/BankScreen';
+import { isUnsorted } from '../core/grain';
+import { SchemaScreen } from '../ui/SchemaScreen';
 import { CaptureScreen } from '../ui/CaptureScreen';
-import { Icon, type IconName } from '../ui/parts';
+import { Icon, Logo, type IconName } from '../ui/parts';
 import { ReviewScreen } from '../ui/ReviewScreen';
-import { SeedScreen } from '../ui/SeedScreen';
+import { GrainScreen } from '../ui/GrainScreen';
 import { SettingsScreen } from '../ui/SettingsScreen';
 import { SortScreen } from '../ui/SortScreen';
-import { href, useNow, useReviewState, useRoute, useSeeds, useSettings, type Route } from './hooks';
+import { useTheme } from './theme';
+import { href, useNow, useReviewState, useRoute, useGrains, useSettings, type Route } from './hooks';
 
 const TABS: Array<{ route: Route; label: string; icon: IconName }> = [
   { route: { name: 'capture' }, label: 'Capture', icon: 'capture' },
   { route: { name: 'sort' }, label: 'Sort', icon: 'sort' },
   { route: { name: 'review' }, label: 'Review', icon: 'review' },
-  { route: { name: 'bank' }, label: 'Bank', icon: 'bank' },
+  { route: { name: 'schema' }, label: 'Schema', icon: 'schema' },
   { route: { name: 'settings' }, label: 'Settings', icon: 'settings' },
 ];
 
 export function App() {
   const route = useRoute();
-  const seeds = useSeeds();
+  const grains = useGrains();
   const review = useReviewState();
   const settings = useSettings();
   const now = useNow();
+  const [theme, setTheme] = useTheme();
 
   const badges: Partial<Record<Route['name'], number>> = {};
-  if (seeds && review) {
-    badges.sort = seeds.filter((s) => s.status === 'active' && isUnsorted(s)).length;
-    badges.review = dueCount(seeds, review, now, { size: settings.reviewSize, focus: settings.reviewFocus });
+  if (grains && review) {
+    badges.sort = grains.filter((s) => s.status === 'active' && isUnsorted(s)).length;
+    badges.review = dueCount(grains, review, now, { size: settings.reviewSize, focus: settings.reviewFocus });
   }
   // App icon badge where supported (installed PWAs).
   const reviewBadge = badges.review;
@@ -37,13 +39,13 @@ export function App() {
     void (reviewBadge ? navigator.setAppBadge(reviewBadge) : navigator.clearAppBadge()).catch(() => {});
   }, [reviewBadge]);
 
-  const active = route.name === 'seed' ? 'bank' : route.name;
+  const active = route.name === 'grain' ? 'schema' : route.name;
 
   return (
     <div className="app">
       <nav className="tabs" aria-label="Main">
         <div className="tabs-brand">
-          <Icon name="sprout" size={22} />
+          <Logo size={30} />
         </div>
         {TABS.map((t) => (
           <a key={t.label} href={href(t.route)} className={`tab${active === t.route.name ? ' active' : ''}`} aria-current={active === t.route.name ? 'page' : undefined}>
@@ -59,9 +61,9 @@ export function App() {
         {route.name === 'capture' && <CaptureScreen />}
         {route.name === 'sort' && <SortScreen />}
         {route.name === 'review' && <ReviewScreen />}
-        {route.name === 'bank' && <BankScreen key={route.category ?? ''} category={route.category} query={route.query} />}
-        {route.name === 'seed' && <SeedScreen key={route.id} id={route.id} />}
-        {route.name === 'settings' && <SettingsScreen />}
+        {route.name === 'schema' && <SchemaScreen key={route.category ?? ''} category={route.category} query={route.query} />}
+        {route.name === 'grain' && <GrainScreen key={route.id} id={route.id} />}
+        {route.name === 'settings' && <SettingsScreen theme={theme} onTheme={setTheme} />}
       </main>
     </div>
   );

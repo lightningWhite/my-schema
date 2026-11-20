@@ -1,8 +1,8 @@
 import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
-import { escapeText, parseSeed, SeedFormatError, serializeSeed, unescapeText } from './format';
-import { arbSeed } from './arbitraries';
-import type { Seed } from './types';
+import { escapeText, parseGrain, GrainFormatError, serializeGrain, unescapeText } from './format';
+import { arbGrain } from './arbitraries';
+import type { Grain } from './types';
 
 const DESIGN_EXAMPLE = `---
 id: 01JDA7Q3V2N8XK5M4R6T9WBYCE
@@ -25,10 +25,10 @@ Lost half the crop in the July heat wave on the twice-a-week schedule.
 Water tomatoes deeply twice a week instead of a little every day.
 `;
 
-describe('parseSeed', () => {
+describe('parseGrain', () => {
   it('reads the example from the design doc', () => {
-    const seed = parseSeed(DESIGN_EXAMPLE);
-    expect(seed).toMatchObject({
+    const grain = parseGrain(DESIGN_EXAMPLE);
+    expect(grain).toMatchObject({
       id: '01JDA7Q3V2N8XK5M4R6T9WBYCE',
       title: 'Deep watering beats frequent watering',
       kind: 'insight',
@@ -39,7 +39,7 @@ describe('parseSeed', () => {
       origin: null,
       updated: '2027-07-14T03:12:00Z',
     });
-    expect(seed.history).toEqual([
+    expect(grain.history).toEqual([
       {
         type: 'revision',
         at: '2027-07-14T03:12:00Z',
@@ -61,29 +61,29 @@ describe('parseSeed', () => {
       '<!-- rev at=2027',
       '<!-- reaffirmed at=2028-03-02T14:00:00Z -->\n\n<!-- rev at=2027',
     );
-    const seed = parseSeed(file);
-    expect(seed.history[0]).toEqual({ type: 'reaffirmation', at: '2028-03-02T14:00:00Z' });
-    expect(seed.history).toHaveLength(3);
+    const grain = parseGrain(file);
+    expect(grain.history[0]).toEqual({ type: 'reaffirmation', at: '2028-03-02T14:00:00Z' });
+    expect(grain.history).toHaveLength(3);
   });
 
   it('preserves unknown frontmatter fields', () => {
     const file = DESIGN_EXAMPLE.replace('origin: null\n', 'origin: null\nmood: hopeful\nfuture: { a: [1, 2] }\n');
-    const seed = parseSeed(file);
-    expect(seed.extra).toEqual({ mood: 'hopeful', future: { a: [1, 2] } });
-    expect(parseSeed(serializeSeed(seed)).extra).toEqual(seed.extra);
-    expect(serializeSeed(seed)).toContain('mood: hopeful');
+    const grain = parseGrain(file);
+    expect(grain.extra).toEqual({ mood: 'hopeful', future: { a: [1, 2] } });
+    expect(parseGrain(serializeGrain(grain)).extra).toEqual(grain.extra);
+    expect(serializeGrain(grain)).toContain('mood: hopeful');
   });
 
   it('tolerates a file without the trailing blank line, and CRLF-free BOM', () => {
-    const seed = parseSeed('\uFEFF' + DESIGN_EXAMPLE.trimEnd());
-    expect(seed.history[1]).toMatchObject({ text: 'Water tomatoes deeply twice a week instead of a little every day.' });
+    const grain = parseGrain('\uFEFF' + DESIGN_EXAMPLE.trimEnd());
+    expect(grain.history[1]).toMatchObject({ text: 'Water tomatoes deeply twice a week instead of a little every day.' });
   });
 
   it('rejects files it cannot understand', () => {
-    expect(() => parseSeed('no frontmatter')).toThrow(SeedFormatError);
-    expect(() => parseSeed('---\nid: x\n---\n\n')).toThrow(/no revisions/);
-    expect(() => parseSeed(DESIGN_EXAMPLE.replace('kind: insight', 'kind: rumor'))).toThrow(/Unknown kind/);
-    expect(() => parseSeed('---\nid: x\n---\n\n<!-- why -->\nx\n')).toThrow(/why block/);
+    expect(() => parseGrain('no frontmatter')).toThrow(GrainFormatError);
+    expect(() => parseGrain('---\nid: x\n---\n\n')).toThrow(/no revisions/);
+    expect(() => parseGrain(DESIGN_EXAMPLE.replace('kind: insight', 'kind: rumor'))).toThrow(/Unknown kind/);
+    expect(() => parseGrain('---\nid: x\n---\n\n<!-- why -->\nx\n')).toThrow(/why block/);
   });
 });
 
@@ -97,31 +97,31 @@ describe('escaping', () => {
     expect(unescapeText(escaped)).toBe(text);
   });
 
-  it('keeps marker-like seed text from breaking the file', () => {
-    const seed = parseSeed(DESIGN_EXAMPLE);
-    const tricky: Seed = {
-      ...seed,
-      history: [{ type: 'revision', at: '2028-01-01T00:00:00Z', text: 'Line one\n<!-- rev at=evil -->\n<!-- why -->\nend' }, ...seed.history],
+  it('keeps marker-like grain text from breaking the file', () => {
+    const grain = parseGrain(DESIGN_EXAMPLE);
+    const tricky: Grain = {
+      ...grain,
+      history: [{ type: 'revision', at: '2028-01-01T00:00:00Z', text: 'Line one\n<!-- rev at=evil -->\n<!-- why -->\nend' }, ...grain.history],
     };
-    expect(parseSeed(serializeSeed(tricky))).toEqual(tricky);
+    expect(parseGrain(serializeGrain(tricky))).toEqual(tricky);
   });
 });
 
 describe('round trip (property)', () => {
-  it('parse(serialize(seed)) equals seed', () => {
+  it('parse(serialize(grain)) equals grain', () => {
     fc.assert(
-      fc.property(arbSeed, (seed) => {
-        expect(parseSeed(serializeSeed(seed))).toEqual(seed);
+      fc.property(arbGrain, (grain) => {
+        expect(parseGrain(serializeGrain(grain))).toEqual(grain);
       }),
       { numRuns: 500 },
     );
   });
 
-  it('serialize is stable: serialize(parse(serialize(seed))) equals serialize(seed)', () => {
+  it('serialize is stable: serialize(parse(serialize(grain))) equals serialize(grain)', () => {
     fc.assert(
-      fc.property(arbSeed, (seed) => {
-        const once = serializeSeed(seed);
-        expect(serializeSeed(parseSeed(once))).toBe(once);
+      fc.property(arbGrain, (grain) => {
+        const once = serializeGrain(grain);
+        expect(serializeGrain(parseGrain(once))).toBe(once);
       }),
       { numRuns: 300 },
     );

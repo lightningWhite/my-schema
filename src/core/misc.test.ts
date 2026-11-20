@@ -1,10 +1,10 @@
 import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
-import { bankToFiles, buildIndex, canWrite, FORMAT_VERSION, filesToBank, mergeBanks, newManifest } from './bank';
+import { toFiles, buildIndex, canWrite, FORMAT_VERSION, fromFiles, mergeGrainSets, newManifest } from './files';
 import { allCategories, categoryTree, recentCategories } from './categories';
 import { suggestKind } from './kinds';
-import { searchSeeds, similarSeeds } from './search';
-import { createSeed, revise } from './seed';
+import { searchGrains, similarGrains } from './search';
+import { createGrain, revise } from './grain';
 import { testCtx } from './testing';
 import { encodeUlid, isUlid, ulidTime } from './ulid';
 
@@ -60,45 +60,45 @@ describe('ulid', () => {
 
 describe('search', () => {
   const ctx = testCtx();
-  const tomato = createSeed(ctx, { text: 'Water tomatoes deeply twice a week', category: 'Garden/Tomatoes', tags: ['watering'] });
-  const kids = createSeed(ctx, { text: 'Kids need connection before correction', title: 'Connection first', category: 'Parenting' });
-  const cpp = createSeed(ctx, { text: 'Use fmt for formatting in C++', category: 'Engineering/C++' });
-  const seeds = [tomato, kids, cpp];
+  const tomato = createGrain(ctx, { text: 'Water tomatoes deeply twice a week', category: 'Garden/Tomatoes', tags: ['watering'] });
+  const kids = createGrain(ctx, { text: 'Kids need connection before correction', title: 'Connection first', category: 'Parenting' });
+  const cpp = createGrain(ctx, { text: 'Use fmt for formatting in C++', category: 'Engineering/C++' });
+  const grains = [tomato, kids, cpp];
 
   it('matches all words, prefix on the last, ignoring case and accents', () => {
-    expect(searchSeeds(seeds, 'WATER tom').map((h) => h.seed)).toEqual([tomato]);
-    expect(searchSeeds(seeds, 'connéction').map((h) => h.seed)).toEqual([kids]);
-    expect(searchSeeds(seeds, 'water kids')).toEqual([]);
+    expect(searchGrains(grains, 'WATER tom').map((h) => h.grain)).toEqual([tomato]);
+    expect(searchGrains(grains, 'connéction').map((h) => h.grain)).toEqual([kids]);
+    expect(searchGrains(grains, 'water kids')).toEqual([]);
   });
 
   it('ranks title and category matches above body matches', () => {
-    const body = createSeed(ctx, { text: 'Assorted notes\nSome thoughts on gardens in general' });
-    expect(searchSeeds([body, tomato], 'garden')[0]!.seed).toBe(tomato);
+    const body = createGrain(ctx, { text: 'Assorted notes\nSome thoughts on gardens in general' });
+    expect(searchGrains([body, tomato], 'garden')[0]!.grain).toBe(tomato);
   });
 
-  it('finds similar seeds while typing a new one', () => {
-    expect(similarSeeds(seeds, 'I should water the tomatoes deeply')).toEqual([tomato]);
-    expect(similarSeeds(seeds, 'Completely unrelated thought here')).toEqual([]);
+  it('finds similar grains while typing a new one', () => {
+    expect(similarGrains(grains, 'I should water the tomatoes deeply')).toEqual([tomato]);
+    expect(similarGrains(grains, 'Completely unrelated thought here')).toEqual([]);
   });
 
   it('searches the current revision only', () => {
     const r = revise(ctx, tomato, { text: 'Mulch the beds in June' });
-    expect(searchSeeds([r], 'twice')).toEqual([]);
-    expect(searchSeeds([r], 'mulch')).toHaveLength(1);
+    expect(searchGrains([r], 'twice')).toEqual([]);
+    expect(searchGrains([r], 'mulch')).toHaveLength(1);
   });
 });
 
 describe('categories', () => {
   const ctx = testCtx();
-  const seeds = [
-    createSeed(ctx, { text: 'a', category: 'Garden/Tomatoes' }),
-    createSeed(ctx, { text: 'b', category: 'Garden' }),
-    createSeed(ctx, { text: 'c', category: 'Engineering/C++' }),
-    createSeed(ctx, { text: 'd' }),
+  const grains = [
+    createGrain(ctx, { text: 'a', category: 'Garden/Tomatoes' }),
+    createGrain(ctx, { text: 'b', category: 'Garden' }),
+    createGrain(ctx, { text: 'c', category: 'Engineering/C++' }),
+    createGrain(ctx, { text: 'd' }),
   ];
 
   it('builds a tree with counts', () => {
-    const tree = categoryTree(seeds);
+    const tree = categoryTree(grains);
     expect(tree.map((n) => [n.path, n.own, n.total])).toEqual([
       ['Engineering', 0, 1],
       ['Garden', 1, 2],
@@ -107,57 +107,68 @@ describe('categories', () => {
   });
 
   it('lists every path including parents', () => {
-    expect(allCategories(seeds)).toEqual(['Engineering', 'Engineering/C++', 'Garden', 'Garden/Tomatoes']);
+    expect(allCategories(grains)).toEqual(['Engineering', 'Engineering/C++', 'Garden', 'Garden/Tomatoes']);
   });
 
   it('orders recent categories by last use', () => {
     ctx.advance(1000);
-    const later = createSeed(ctx, { text: 'e', category: 'Engineering/C++' });
-    expect(recentCategories([...seeds, later])[0]).toBe('Engineering/C++');
+    const later = createGrain(ctx, { text: 'e', category: 'Engineering/C++' });
+    expect(recentCategories([...grains, later])[0]).toBe('Engineering/C++');
   });
 });
 
-describe('bank files', () => {
+describe('schema files', () => {
   const ctx = testCtx();
-  const a = createSeed(ctx, { text: 'one', kind: 'tip' });
-  const b = createSeed(ctx, { text: 'two', category: 'X' });
+  const a = createGrain(ctx, { text: 'one', kind: 'tip' });
+  const b = createGrain(ctx, { text: 'two', category: 'X' });
 
-  it('exports and imports a bank losslessly', () => {
-    const files = bankToFiles([a, b], { [a.id]: { interval: 3, due: '2026-02-01T00:00:00.000Z' } }, newManifest());
-    expect([...files.keys()].sort()).toEqual(['index.json', 'review.json', 'seedbank.json', `seeds/${a.id}.md`, `seeds/${b.id}.md`]);
-    const back = filesToBank(files);
+  it('exports and imports a schema losslessly', () => {
+    const files = toFiles([a, b], { [a.id]: { interval: 3, due: '2026-02-01T00:00:00.000Z' } }, newManifest());
+    expect([...files.keys()].sort()).toEqual([`grains/${a.id}.md`, `grains/${b.id}.md`, 'index.json', 'manifest.json', 'review.json']);
+    const back = fromFiles(files);
     expect(back.errors).toEqual([]);
-    expect(back.seeds.sort((x, y) => x.id.localeCompare(y.id))).toEqual([a, b]);
+    expect(back.grains.sort((x, y) => x.id.localeCompare(y.id))).toEqual([a, b]);
     expect(back.review?.[a.id]?.interval).toBe(3);
     expect(back.manifest?.formatVersion).toBe(FORMAT_VERSION);
   });
 
-  it('reads banks nested in a single folder and reports bad files', () => {
+  it('reads schemas nested in a single folder and reports bad files', () => {
     const files = new Map([
-      [`seedbank-export/seeds/${a.id}.md`, bankToFiles([a], {}, newManifest()).get(`seeds/${a.id}.md`)!],
-      ['seedbank-export/seeds/broken.md', 'nope'],
+      [`schema-export/grains/${a.id}.md`, toFiles([a], {}, newManifest()).get(`grains/${a.id}.md`)!],
+      ['schema-export/grains/broken.md', 'nope'],
     ]);
-    const back = filesToBank(files);
-    expect(back.seeds).toEqual([a]);
-    expect(back.errors.map((e) => e.path)).toEqual(['seedbank-export/seeds/broken.md']);
+    const back = fromFiles(files);
+    expect(back.grains).toEqual([a]);
+    expect(back.errors.map((e) => e.path)).toEqual(['schema-export/grains/broken.md']);
   });
 
   it('merges imports without losing anything', () => {
     ctx.advance(10);
     const a2 = revise(ctx, a, { text: 'one, revised' });
-    const r = mergeBanks([a2, b], [a, createSeed(ctx, { text: 'three' })]);
+    const r = mergeGrainSets([a2, b], [a, createGrain(ctx, { text: 'three' })]);
     expect(r.added).toBe(1);
     expect(r.merged).toBe(0);
-    expect(r.seeds.find((s) => s.id === a.id)!.history).toHaveLength(2);
+    expect(r.grains.find((s) => s.id === a.id)!.history).toHaveLength(2);
   });
 
-  it('builds index.json from seeds alone', () => {
+  it('imports exports from before the rename (seeds/ and seedbank.json)', () => {
+    const grainFile = toFiles([a], {}, newManifest()).get(`grains/${a.id}.md`)!;
+    const back = fromFiles(new Map([
+      ['seedbank/seedbank.json', JSON.stringify(newManifest())],
+      [`seedbank/seeds/${a.id}.md`, grainFile],
+    ]));
+    expect(back.errors).toEqual([]);
+    expect(back.grains).toEqual([a]);
+    expect(back.manifest).not.toBeNull();
+  });
+
+  it('builds index.json from grains alone', () => {
     const idx = buildIndex([b, a]);
-    expect(idx.seeds.map((e) => e.id)).toEqual([a.id, b.id]);
-    expect(idx.seeds[0]).toMatchObject({ title: 'one', kind: 'tip', revisions: 1, text: 'one' });
+    expect(idx.grains.map((e) => e.id)).toEqual([a.id, b.id]);
+    expect(idx.grains[0]).toMatchObject({ title: 'one', kind: 'tip', revisions: 1, text: 'one' });
   });
 
-  it('refuses to write a bank from a newer app', () => {
+  it('refuses to write a schema from a newer app', () => {
     expect(canWrite({ formatVersion: FORMAT_VERSION })).toBe(true);
     expect(canWrite({ formatVersion: FORMAT_VERSION + 1 })).toBe(false);
   });

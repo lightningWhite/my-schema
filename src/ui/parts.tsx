@@ -1,7 +1,7 @@
 import { useId, useState, type ReactNode } from 'react';
 import { CONFIDENCE_LABEL, KIND_INFO } from '../core/kinds';
-import { currentRevision, displayTitle } from '../core/seed';
-import { CONFIDENCES, KINDS, type Confidence, type Kind, type Seed } from '../core/types';
+import { currentRevision, displayTitle } from '../core/grain';
+import { CONFIDENCES, KINDS, type Confidence, type Kind, type Grain } from '../core/types';
 import { href } from '../app/hooks';
 import { relativeDate } from './format';
 
@@ -11,7 +11,8 @@ const PATHS = {
   capture: 'M12 5v14M5 12h14',
   sort: 'M4 6h16M7 12h10M10 18h4',
   review: 'M4 12a8 8 0 1 0 2.3-5.6M4 4v4h4',
-  bank: 'M4 20V9l8-5 8 5v11M9 20v-6h6v6',
+  // Linked nodes, matching the logo.
+  schema: 'M8.4 7.6l7.4 1.6M16.2 11.4l-5.4 5.4M7.4 9.8l1.6 5.6M6.5 4.5a2.8 2.8 0 1 1 0 5.6a2.8 2.8 0 1 1 0-5.6zM17.5 7.2a2.5 2.5 0 1 1 0 5a2.5 2.5 0 1 1 0-5zM9 15.5a2.5 2.5 0 1 1 0 5a2.5 2.5 0 1 1 0-5z',
   settings:
     'M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z',
   send: 'M5 12h14M13 6l6 6-6 6',
@@ -19,7 +20,6 @@ const PATHS = {
   back: 'M15 18l-6-6 6-6',
   check: 'M5 12l5 5L20 7',
   close: 'M6 6l12 12M18 6L6 18',
-  sprout: 'M12 21v-9M12 12c0-4-3-7-8-7 0 5 3 7 8 7zM12 10c0-3 2-6 7-6 0 4-2 6-7 6z',
 } as const;
 
 export type IconName = keyof typeof PATHS;
@@ -28,6 +28,24 @@ export function Icon({ name, size = 20 }: { name: IconName; size?: number }) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
       <path d={PATHS[name]} />
+    </svg>
+  );
+}
+
+/** The app mark: linked nodes on an accent tile. Same drawing as public/icon.svg. */
+export function Logo({ size = 28 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 64 64" aria-hidden="true" className="logo">
+      <rect width="64" height="64" rx="15" fill="var(--accent)" />
+      <g stroke="var(--accent-ink)" strokeWidth={3} strokeLinecap="round">
+        <path d="M20 20L44 26M44 26L26 44M20 20L26 44M44 26L46 46" />
+      </g>
+      <g fill="var(--accent-ink)">
+        <circle cx="20" cy="20" r="6" />
+        <circle cx="44" cy="26" r="5" />
+        <circle cx="26" cy="44" r="5" />
+        <circle cx="46" cy="46" r="3.5" />
+      </g>
     </svg>
   );
 }
@@ -79,7 +97,7 @@ export function ConfidenceChips({ value, onChange }: { value?: Confidence; onCha
 
 /**
  * Recent categories as one-tap chips, plus a field for a new or existing
- * path (with autocomplete from every category in the bank).
+ * path (with autocomplete from every category in the schema).
  */
 export function CategoryPicker(props: {
   value?: string;
@@ -140,31 +158,31 @@ export function TagsField({ value, onChange }: { value: string[]; onChange: (t: 
   );
 }
 
-// ---------------------------------------------------------------- seeds
+// ---------------------------------------------------------------- grains
 
-export function SeedRow({ seed, now }: { seed: Seed; now: string }) {
-  const title = displayTitle(seed);
-  const text = currentRevision(seed).text;
-  const rest = seed.title ? text : text.slice(text.indexOf(title) + title.length).trim();
+export function GrainRow({ grain, now }: { grain: Grain; now: string }) {
+  const title = displayTitle(grain);
+  const text = currentRevision(grain).text;
+  const rest = grain.title ? text : text.slice(text.indexOf(title) + title.length).trim();
   return (
-    <a className={`seed-row status-${seed.status}`} href={href({ name: 'seed', id: seed.id })}>
-      <div className="seed-row-title">{title}</div>
-      {rest && <div className="seed-row-text">{rest}</div>}
-      <div className="seed-row-meta">
-        <KindBadge kind={seed.kind} />
-        {seed.category ? <span className="cat">{seed.category}</span> : <span className="cat unsorted">Unsorted</span>}
-        {seed.status !== 'active' && <span className="status-label">{seed.status}</span>}
-        <span className="when">{relativeDate(seed.updated, now)}</span>
+    <a className={`grain-row status-${grain.status}`} href={href({ name: 'grain', id: grain.id })}>
+      <div className="grain-row-title">{title}</div>
+      {rest && <div className="grain-row-text">{rest}</div>}
+      <div className="grain-row-meta">
+        <KindBadge kind={grain.kind} />
+        {grain.category ? <span className="cat">{grain.category}</span> : <span className="cat unsorted">Unsorted</span>}
+        {grain.status !== 'active' && <span className="status-label">{grain.status}</span>}
+        <span className="when">{relativeDate(grain.updated, now)}</span>
       </div>
     </a>
   );
 }
 
-export function SeedText({ text }: { text: string }) {
-  return <div className="seed-text">{text}</div>;
+export function GrainText({ text }: { text: string }) {
+  return <div className="grain-text">{text}</div>;
 }
 
-export function Empty({ icon = 'sprout', title, children }: { icon?: IconName; title: string; children?: ReactNode }) {
+export function Empty({ icon = 'schema', title, children }: { icon?: IconName; title: string; children?: ReactNode }) {
   return (
     <div className="empty">
       <div className="empty-icon">

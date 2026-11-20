@@ -1,6 +1,6 @@
 /**
  * The real clock and ID generator, injected into core (CLAUDE.md rule 1).
- * IDs are monotonic within a session: two seeds made in the same millisecond
+ * IDs are monotonic within a session: two grains made in the same millisecond
  * still sort in creation order.
  */
 import type { Ctx } from '../core/types';

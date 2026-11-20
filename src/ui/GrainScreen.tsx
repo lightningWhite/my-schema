@@ -1,37 +1,37 @@
-/** One seed: current text, metadata, actions and its full history. */
+/** One grain: current text, metadata, actions and its full history. */
 import { useState } from 'react';
-import { deleteSeed, editMeta, reactivateSeed, reaffirmSeed, reviseSeed, spinOffSeed } from '../app/actions';
-import { href, navigate, useNow, useSeeds } from '../app/hooks';
+import { deleteGrain, editMeta, reactivateGrain, reaffirmGrain, reviseGrain, spinOffGrain } from '../app/actions';
+import { href, navigate, useNow, useGrains } from '../app/hooks';
 import { allCategories, recentCategories } from '../core/categories';
 import { CONFIDENCE_LABEL } from '../core/kinds';
-import { connections, currentRevision, displayTitle } from '../core/seed';
-import type { HistoryEntry, Revision, Seed } from '../core/types';
+import { connections, currentRevision, displayTitle } from '../core/grain';
+import type { HistoryEntry, Revision, Grain } from '../core/types';
 import { longDate, monthYear, plural } from './format';
-import { CategoryPicker, Icon, KindBadge, KindChips, SeedText, TagsField } from './parts';
+import { CategoryPicker, Icon, KindBadge, KindChips, GrainText, TagsField } from './parts';
 import { RetirePanel } from './RetirePanel';
-import { SeedEditor } from './SeedEditor';
+import { GrainEditor } from './GrainEditor';
 
 type Mode = 'view' | 'revise' | 'meta' | 'retire' | 'delete' | 'practice';
 
-export function SeedScreen({ id }: { id: string }) {
-  const seeds = useSeeds();
+export function GrainScreen({ id }: { id: string }) {
+  const grains = useGrains();
   const now = useNow();
   const [mode, setMode] = useState<Mode>('view');
-  if (!seeds) return null;
-  const seed = seeds.find((s) => s.id === id);
-  if (!seed) {
+  if (!grains) return null;
+  const grain = grains.find((s) => s.id === id);
+  if (!grain) {
     return (
       <div className="screen narrow">
         <p className="muted center">
-          This seed isn't in your bank. <a href="#/bank">Back to the bank</a>
+          This grain isn't in your schema. <a href="#/schema">Back to the schema</a>
         </p>
       </div>
     );
   }
-  const cur = currentRevision(seed);
-  const linked = (sid: string) => seeds.find((s) => s.id === sid);
-  const successor = seed.links.find((l) => l.type === 'succeededBy');
-  const predecessor = seed.links.find((l) => l.type === 'succeeds');
+  const cur = currentRevision(grain);
+  const linked = (sid: string) => grains.find((s) => s.id === sid);
+  const successor = grain.links.find((l) => l.type === 'succeededBy');
+  const predecessor = grain.links.find((l) => l.type === 'succeeds');
 
   return (
     <div className="screen narrow">
@@ -40,45 +40,45 @@ export function SeedScreen({ id }: { id: string }) {
           <Icon name="back" />
         </button>
         <div className="card-meta">
-          <KindBadge kind={seed.kind} />
-          {seed.category ? (
-            <a className="cat" href={href({ name: 'bank', category: seed.category })}>
-              {seed.category}
+          <KindBadge kind={grain.kind} />
+          {grain.category ? (
+            <a className="cat" href={href({ name: 'schema', category: grain.category })}>
+              {grain.category}
             </a>
           ) : (
             <span className="cat unsorted">Unsorted</span>
           )}
           {cur.confidence && <span className="confidence">{CONFIDENCE_LABEL[cur.confidence]}</span>}
-          {seed.status !== 'active' && <span className="status-label">{seed.status}</span>}
+          {grain.status !== 'active' && <span className="status-label">{grain.status}</span>}
         </div>
       </header>
 
-      {seed.status !== 'active' && (
+      {grain.status !== 'active' && (
         <div className="banner">
-          {seed.status === 'dormant' ? 'Dormant' : 'Succeeded'} since {longDate(seed.retired?.at ?? seed.updated, now)}
-          {seed.retired?.why && <> — “{seed.retired.why}”</>}
-          {successor && linked(successor.seed) && (
+          {grain.status === 'dormant' ? 'Dormant' : 'Succeeded'} since {longDate(grain.retired?.at ?? grain.updated, now)}
+          {grain.retired?.why && <> — “{grain.retired.why}”</>}
+          {successor && linked(successor.grain) && (
             <>
               {' '}
-              · replaced by <a href={href({ name: 'seed', id: successor.seed })}>{displayTitle(linked(successor.seed)!)}</a>
+              · replaced by <a href={href({ name: 'grain', id: successor.grain })}>{displayTitle(linked(successor.grain)!)}</a>
             </>
           )}
         </div>
       )}
-      {predecessor && linked(predecessor.seed) && (
+      {predecessor && linked(predecessor.grain) && (
         <div className="banner subtle">
-          Replaces <a href={href({ name: 'seed', id: predecessor.seed })}>{displayTitle(linked(predecessor.seed)!)}</a>
+          Replaces <a href={href({ name: 'grain', id: predecessor.grain })}>{displayTitle(linked(predecessor.grain)!)}</a>
         </div>
       )}
 
-      <article className="seed-page">
-        {seed.title && <h1 className="seed-title">{seed.title}</h1>}
-        <SeedText text={cur.text} />
-        {seed.source && <div className="source">— {seed.source}</div>}
-        {seed.tags.length > 0 && (
+      <article className="grain-page">
+        {grain.title && <h1 className="grain-title">{grain.title}</h1>}
+        <GrainText text={cur.text} />
+        {grain.source && <div className="source">— {grain.source}</div>}
+        {grain.tags.length > 0 && (
           <div className="tags">
-            {seed.tags.map((t) => (
-              <a key={t} className="tag" href={href({ name: 'bank', query: t })}>
+            {grain.tags.map((t) => (
+              <a key={t} className="tag" href={href({ name: 'schema', query: t })}>
                 #{t}
               </a>
             ))}
@@ -87,13 +87,13 @@ export function SeedScreen({ id }: { id: string }) {
       </article>
 
       {mode === 'view' && (
-        <div className="seed-actions">
-          {seed.status === 'active' ? (
+        <div className="grain-actions">
+          {grain.status === 'active' ? (
             <>
               <button className="button primary" onClick={() => setMode('revise')}>
                 Revise
               </button>
-              <button className="button" onClick={() => void reaffirmSeed(seed.id)} title="Record that you still hold this">
+              <button className="button" onClick={() => void reaffirmGrain(grain.id)} title="Record that you still hold this">
                 Still true
               </button>
               <button className="button" onClick={() => setMode('meta')}>
@@ -102,7 +102,7 @@ export function SeedScreen({ id }: { id: string }) {
               <button className="button" onClick={() => setMode('retire')}>
                 Retire
               </button>
-              {seed.kind !== 'practice' && (
+              {grain.kind !== 'practice' && (
                 <button className="button" onClick={() => setMode('practice')} title="Start a habit or personal rule that grows out of this">
                   Make it a practice
                 </button>
@@ -110,7 +110,7 @@ export function SeedScreen({ id }: { id: string }) {
             </>
           ) : (
             <>
-              <button className="button" onClick={() => void reactivateSeed(seed.id)}>
+              <button className="button" onClick={() => void reactivateGrain(grain.id)}>
                 Make active again
               </button>
               <button className="button" onClick={() => setMode('meta')}>
@@ -128,12 +128,12 @@ export function SeedScreen({ id }: { id: string }) {
         <div className="panel">
           <h3>New revision</h3>
           <p className="muted">The current text is kept in the history below.</p>
-          <SeedEditor
+          <GrainEditor
             mode="revise"
             initial={{ text: cur.text, confidence: cur.confidence }}
             onCancel={() => setMode('view')}
             onSave={async ({ text, confidence, why }) => {
-              await reviseSeed(seed.id, { text, confidence, why });
+              await reviseGrain(grain.id, { text, confidence, why });
               setMode('view');
             }}
           />
@@ -142,39 +142,39 @@ export function SeedScreen({ id }: { id: string }) {
       {mode === 'practice' && (
         <div className="panel">
           <h3>Make it a practice</h3>
-          <p className="muted">What will you do because of this? Both seeds stay, linked to each other.</p>
-          <SeedEditor
+          <p className="muted">What will you do because of this? Both grains stay, linked to each other.</p>
+          <GrainEditor
             mode="new"
-            initial={{ text: '', kind: 'practice', category: seed.category, tags: seed.tags }}
-            categories={allCategories(seeds)}
-            recentCategories={recentCategories(seeds)}
+            initial={{ text: '', kind: 'practice', category: grain.category, tags: grain.tags }}
+            categories={allCategories(grains)}
+            recentCategories={recentCategories(grains)}
             saveLabel="Save practice"
             onCancel={() => setMode('view')}
             onSave={async (input) => {
-              const child = await spinOffSeed(seed.id, input);
+              const child = await spinOffGrain(grain.id, input);
               setMode('view');
-              navigate({ name: 'seed', id: child.id });
+              navigate({ name: 'grain', id: child.id });
             }}
           />
         </div>
       )}
-      {mode === 'meta' && <MetaEditor seed={seed} seeds={seeds} onDone={() => setMode('view')} />}
+      {mode === 'meta' && <MetaEditor grain={grain} grains={grains} onDone={() => setMode('view')} />}
       {mode === 'retire' && (
         <RetirePanel
-          seed={seed}
-          categories={allCategories(seeds)}
+          grain={grain}
+          categories={allCategories(grains)}
           onCancel={() => setMode('view')}
           onDone={(successorId) => {
             setMode('view');
-            if (successorId) navigate({ name: 'seed', id: successorId });
+            if (successorId) navigate({ name: 'grain', id: successorId });
           }}
         />
       )}
       {mode === 'delete' && (
         <div className="panel danger-panel">
-          <h3>Delete this seed?</h3>
+          <h3>Delete this grain?</h3>
           <p>
-            This removes the seed and its whole history from this device. It can't be undone. If you've outgrown it,{' '}
+            This removes the grain and its whole history from this device. It can't be undone. If you've outgrown it,{' '}
             <strong>Retire</strong> keeps the record of what you used to think.
           </p>
           <div className="editor-actions">
@@ -184,8 +184,8 @@ export function SeedScreen({ id }: { id: string }) {
             <button
               className="button danger"
               onClick={async () => {
-                await deleteSeed(seed.id);
-                navigate({ name: 'bank' }, true);
+                await deleteGrain(grain.id);
+                navigate({ name: 'schema' }, true);
               }}
             >
               Delete forever
@@ -194,46 +194,46 @@ export function SeedScreen({ id }: { id: string }) {
         </div>
       )}
 
-      <Connections seed={seed} seeds={seeds} />
-      <History seed={seed} now={now} />
+      <Connections grain={grain} grains={grains} />
+      <History grain={grain} now={now} />
     </div>
   );
 }
 
-function MetaEditor({ seed, seeds, onDone }: { seed: Seed; seeds: Seed[]; onDone: () => void }) {
-  const [title, setTitle] = useState(seed.title ?? '');
-  const [source, setSource] = useState(seed.source ?? '');
-  const others = seeds.filter((s) => s.id !== seed.id);
+function MetaEditor({ grain, grains, onDone }: { grain: Grain; grains: Grain[]; onDone: () => void }) {
+  const [title, setTitle] = useState(grain.title ?? '');
+  const [source, setSource] = useState(grain.source ?? '');
+  const others = grains.filter((s) => s.id !== grain.id);
   return (
     <div className="panel">
       <h3>Details</h3>
-      <p className="muted">Details change in place. To change what the seed says, revise it.</p>
+      <p className="muted">Details change in place. To change what the grain says, revise it.</p>
       <label className="field">
         <span className="field-label">Title</span>
-        <input value={title} onChange={(e) => setTitle(e.target.value)} onBlur={() => void editMeta(seed.id, { title })} placeholder="Optional" />
+        <input value={title} onChange={(e) => setTitle(e.target.value)} onBlur={() => void editMeta(grain.id, { title })} placeholder="Optional" />
       </label>
       <div className="field-label">Kind</div>
-      <KindChips value={seed.kind} onChange={(k) => void editMeta(seed.id, { kind: k ?? null })} />
+      <KindChips value={grain.kind} onChange={(k) => void editMeta(grain.id, { kind: k ?? null })} />
       <div className="field-label">Category</div>
       <CategoryPicker
-        value={seed.category}
+        value={grain.category}
         recent={recentCategories(others)}
         all={allCategories(others)}
-        onChange={(c) => void editMeta(seed.id, { category: c ?? null })}
+        onChange={(c) => void editMeta(grain.id, { category: c ?? null })}
       />
       <label className="field">
         <span className="field-label">Tags</span>
-        <TagsField value={seed.tags} onChange={(tags) => void editMeta(seed.id, { tags })} />
+        <TagsField value={grain.tags} onChange={(tags) => void editMeta(grain.id, { tags })} />
       </label>
       <label className="field">
         <span className="field-label">Source</span>
-        <input value={source} onChange={(e) => setSource(e.target.value)} onBlur={() => void editMeta(seed.id, { source })} placeholder={seed.kind === 'quote' ? 'Who said it?' : 'Optional'} />
+        <input value={source} onChange={(e) => setSource(e.target.value)} onBlur={() => void editMeta(grain.id, { source })} placeholder={grain.kind === 'quote' ? 'Who said it?' : 'Optional'} />
       </label>
       <div className="editor-actions">
         <button
           className="button primary"
           onClick={async () => {
-            await editMeta(seed.id, { title, source });
+            await editMeta(grain.id, { title, source });
             onDone();
           }}
         >
@@ -263,8 +263,8 @@ function groupHistory(history: HistoryEntry[]): Group[] {
   return out;
 }
 
-function History({ seed, now }: { seed: Seed; now: string }) {
-  const groups = groupHistory(seed.history);
+function History({ grain, now }: { grain: Grain; now: string }) {
+  const groups = groupHistory(grain.history);
   const revCount = groups.filter((g) => g.type === 'revision').length;
   return (
     <section className="history" aria-label="History">
@@ -288,7 +288,7 @@ function History({ seed, now }: { seed: Seed; now: string }) {
                 {g.rev.confidence && <span className="confidence">{CONFIDENCE_LABEL[g.rev.confidence]}</span>}
                 {g.isCurrent && <span className="current-label">current</span>}
               </div>
-              {!g.isCurrent && <SeedText text={g.rev.text} />}
+              {!g.isCurrent && <GrainText text={g.rev.text} />}
               {g.rev.why && <div className="tl-why">Why it changed: {g.rev.why}</div>}
             </li>
           ),
@@ -298,18 +298,18 @@ function History({ seed, now }: { seed: Seed; now: string }) {
   );
 }
 
-/** Seeds linked to this one, either direction. Replacements are shown in the banners above instead. */
-function Connections({ seed, seeds }: { seed: Seed; seeds: Seed[] }) {
-  const list = connections(seed, seeds).filter((c) => c.label !== 'Replaces' && c.label !== 'Replaced by');
+/** Grains linked to this one, either direction. Replacements are shown in the banners above instead. */
+function Connections({ grain, grains }: { grain: Grain; grains: Grain[] }) {
+  const list = connections(grain, grains).filter((c) => c.label !== 'Replaces' && c.label !== 'Replaced by');
   if (!list.length) return null;
   return (
-    <section className="connections" aria-label="Connected seeds">
+    <section className="connections" aria-label="Connected grains">
       <h2>Connected</h2>
       {list.map((c) => (
-        <a key={c.label + c.seed.id} className="connection" href={href({ name: 'seed', id: c.seed.id })}>
+        <a key={c.label + c.grain.id} className="connection" href={href({ name: 'grain', id: c.grain.id })}>
           <span className="connection-label">{c.label}</span>
-          <span className="connection-title">{displayTitle(c.seed)}</span>
-          <KindBadge kind={c.seed.kind} />
+          <span className="connection-title">{displayTitle(c.grain)}</span>
+          <KindBadge kind={c.grain.kind} />
         </a>
       ))}
     </section>

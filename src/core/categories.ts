@@ -1,24 +1,24 @@
 /** Category paths (`Garden/Tomatoes`) as a tree, and recency for quick-pick chips. */
 import { cmpAt } from './time';
-import type { Seed } from './types';
+import type { Grain } from './types';
 
 export interface CategoryNode {
   name: string;
   path: string;
-  /** Seeds filed exactly here. */
+  /** Grains filed exactly here. */
   own: number;
-  /** Seeds here and in every subcategory. */
+  /** Grains here and in every subcategory. */
   total: number;
   children: CategoryNode[];
 }
 
-export function categoryTree(seeds: Seed[]): CategoryNode[] {
+export function categoryTree(grains: Grain[]): CategoryNode[] {
   const root: CategoryNode = { name: '', path: '', own: 0, total: 0, children: [] };
-  for (const seed of seeds) {
-    if (!seed.category) continue;
+  for (const grain of grains) {
+    if (!grain.category) continue;
     let node = root;
     node.total++;
-    const parts = seed.category.split('/');
+    const parts = grain.category.split('/');
     parts.forEach((name, i) => {
       const path = parts.slice(0, i + 1).join('/');
       let child = node.children.find((c) => c.name === name);
@@ -40,9 +40,9 @@ export function categoryTree(seeds: Seed[]): CategoryNode[] {
 }
 
 /** Every category path in use, including parents, sorted. */
-export function allCategories(seeds: Seed[]): string[] {
+export function allCategories(grains: Grain[]): string[] {
   const set = new Set<string>();
-  for (const s of seeds) {
+  for (const s of grains) {
     if (!s.category) continue;
     const parts = s.category.split('/');
     for (let i = 1; i <= parts.length; i++) set.add(parts.slice(0, i).join('/'));
@@ -51,9 +51,9 @@ export function allCategories(seeds: Seed[]): string[] {
 }
 
 /** Categories most recently used, for the chips after capture. */
-export function recentCategories(seeds: Seed[], limit = 6): string[] {
+export function recentCategories(grains: Grain[], limit = 6): string[] {
   const latest = new Map<string, string>();
-  for (const s of seeds) {
+  for (const s of grains) {
     if (!s.category) continue;
     const prev = latest.get(s.category);
     if (!prev || cmpAt(s.updated, prev) > 0) latest.set(s.category, s.updated);
@@ -64,6 +64,6 @@ export function recentCategories(seeds: Seed[], limit = 6): string[] {
     .map(([c]) => c);
 }
 
-export function allTags(seeds: Seed[]): string[] {
-  return [...new Set(seeds.flatMap((s) => s.tags))].sort();
+export function allTags(grains: Grain[]): string[] {
+  return [...new Set(grains.flatMap((s) => s.tags))].sort();
 }

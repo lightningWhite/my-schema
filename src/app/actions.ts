@@ -1,14 +1,14 @@
 /**
- * Everything the UI can do to the bank. Each action applies a pure core
+ * Everything the UI can do to the schema. Each action applies a pure core
  * function and writes the result (and any review-state change) in one
  * IndexedDB transaction. Screens call these; they never touch the DB directly
  * for writes.
  */
 import { strToU8, strFromU8, unzipSync, zipSync } from 'fflate';
-import { bankToFiles, canWrite, filesToBank, mergeBanks, type ImportResult } from '../core/bank';
+import { toFiles, canWrite, fromFiles, mergeGrainSets, type ImportResult } from '../core/files';
 import { schedule, type ReviewOutcome } from '../core/review';
 import {
-  createSeed,
+  createGrain,
   goDormant,
   reactivate,
   reaffirm,
@@ -17,95 +17,95 @@ import {
   succeed,
   updateMeta,
   type MetaPatch,
-  type NewSeed,
+  type NewGrain,
   type RevisionInput,
-} from '../core/seed';
-import type { Seed } from '../core/types';
-import { SeedbankDB, type Settings } from '../store/db';
+} from '../core/grain';
+import type { Grain } from '../core/types';
+import { SchemaDB, type Settings } from '../store/db';
 import { ctx } from './ctx';
 
-export const db = new SeedbankDB();
+export const db = new SchemaDB();
 
-async function load(id: string): Promise<Seed> {
-  const s = await db.seeds.get(id);
-  if (!s) throw new Error(`No seed ${id}`);
+async function load(id: string): Promise<Grain> {
+  const s = await db.grains.get(id);
+  if (!s) throw new Error(`No grain ${id}`);
   return s;
 }
 
-async function withReview(seed: Seed, outcome: ReviewOutcome | null, write: () => Promise<unknown>) {
-  await db.transaction('rw', db.seeds, db.kv, async () => {
+async function withReview(grain: Grain, outcome: ReviewOutcome | null, write: () => Promise<unknown>) {
+  await db.transaction('rw', db.grains, db.kv, async () => {
     await write();
     if (outcome) {
       const state = await db.getReview();
-      await db.setReview(schedule(seed, state, outcome, ctx.now(), Math.random()));
+      await db.setReview(schedule(grain, state, outcome, ctx.now(), Math.random()));
     }
   });
 }
 
-export async function capture(input: NewSeed): Promise<Seed> {
-  const seed = createSeed(ctx, input);
-  await db.seeds.add(seed);
-  return seed;
+export async function capture(input: NewGrain): Promise<Grain> {
+  const grain = createGrain(ctx, input);
+  await db.grains.add(grain);
+  return grain;
 }
 
-export async function editMeta(id: string, patch: MetaPatch): Promise<Seed> {
+export async function editMeta(id: string, patch: MetaPatch): Promise<Grain> {
   const next = updateMeta(ctx, await load(id), patch);
-  await db.seeds.put(next);
+  await db.grains.put(next);
   return next;
 }
 
 /** Add a revision. `fromReview` also reschedules it. */
-export async function reviseSeed(id: string, input: RevisionInput, fromReview = false): Promise<Seed> {
+export async function reviseGrain(id: string, input: RevisionInput, fromReview = false): Promise<Grain> {
   const cur = await load(id);
   const next = revise(ctx, cur, input);
   if (next === cur && !fromReview) return cur;
-  await withReview(next, next === cur ? 'reaffirmed' : 'revised', () => db.seeds.put(next));
+  await withReview(next, next === cur ? 'reaffirmed' : 'revised', () => db.grains.put(next));
   return next;
 }
 
-export async function reaffirmSeed(id: string): Promise<Seed> {
+export async function reaffirmGrain(id: string): Promise<Grain> {
   const next = reaffirm(ctx, await load(id));
-  await withReview(next, 'reaffirmed', () => db.seeds.put(next));
+  await withReview(next, 'reaffirmed', () => db.grains.put(next));
   return next;
 }
 
-export async function skipSeed(id: string): Promise<void> {
-  const seed = await load(id);
-  await withReview(seed, 'skipped', async () => {});
+export async function skipGrain(id: string): Promise<void> {
+  const grain = await load(id);
+  await withReview(grain, 'skipped', async () => {});
 }
 
-export async function dormantSeed(id: string, why?: string): Promise<Seed> {
+export async function dormantGrain(id: string, why?: string): Promise<Grain> {
   const next = goDormant(ctx, await load(id), why);
-  await withReview(next, 'retired', () => db.seeds.put(next));
+  await withReview(next, 'retired', () => db.grains.put(next));
   return next;
 }
 
-export async function reactivateSeed(id: string): Promise<Seed> {
+export async function reactivateGrain(id: string): Promise<Grain> {
   const next = reactivate(ctx, await load(id));
-  await db.seeds.put(next);
+  await db.grains.put(next);
   return next;
 }
 
-export async function succeedSeed(id: string, input: NewSeed, why?: string): Promise<Seed> {
+export async function succeedGrain(id: string, input: NewGrain, why?: string): Promise<Grain> {
   const { old, successor } = succeed(ctx, await load(id), input, why);
-  await withReview(old, 'retired', () => db.seeds.bulkPut([old, successor]));
+  await withReview(old, 'retired', () => db.grains.bulkPut([old, successor]));
   return successor;
 }
 
-/** Start a new seed that grows out of this one (e.g. an insight → a practice), linked to it. */
-export async function spinOffSeed(id: string, input: NewSeed): Promise<Seed> {
+/** Start a new grain that grows out of this one (e.g. an insight → a practice), linked to it. */
+export async function spinOffGrain(id: string, input: NewGrain): Promise<Grain> {
   const { source, child } = spinOff(ctx, await load(id), input);
-  await db.seeds.bulkPut([source, child]);
+  await db.grains.bulkPut([source, child]);
   return child;
 }
 
 /**
- * The one way a seed's history is ever removed: the user deleting the whole
- * seed (CLAUDE.md rule 3). Links pointing at it are left as they are.
+ * The one way a grain's history is ever removed: the user deleting the whole
+ * grain (CLAUDE.md rule 3). Links pointing at it are left as they are.
  */
-export async function deleteSeed(id: string): Promise<void> {
-  await db.transaction('rw', db.seeds, db.kv, async () => {
-    await db.seeds.delete(id);
+export async function deleteGrain(id: string): Promise<void> {
+  await db.transaction('rw', db.grains, db.kv, async () => {
+    await db.grains.delete(id);
     const state = await db.getReview();
     if (state[id]) {
       const { [id]: _gone, ...rest } = state;
@@ -120,12 +120,12 @@ export async function saveSettings(s: Settings): Promise<void> {
 
 // ---------------------------------------------------------------- export / import
 
-/** The whole bank as a zip of the repo layout (docs/design.md §3.1). */
+/** The whole schema as a zip of the repo layout (docs/design.md §3.1). */
 export async function exportZip(): Promise<Blob> {
-  const [seeds, review, manifest] = await Promise.all([db.seeds.toArray(), db.getReview(), db.getManifest()]);
-  const files = bankToFiles(seeds, review, manifest);
+  const [grains, review, manifest] = await Promise.all([db.grains.toArray(), db.getReview(), db.getManifest()]);
+  const files = toFiles(grains, review, manifest);
   const entries: Record<string, Uint8Array> = {};
-  for (const [path, text] of files) entries[`seedbank/${path}`] = strToU8(text);
+  for (const [path, text] of files) entries[`schema/${path}`] = strToU8(text);
   const zipped = zipSync(entries, { level: 6 });
   return new Blob([zipped as Uint8Array<ArrayBuffer>], { type: 'application/zip' });
 }
@@ -137,7 +137,7 @@ export interface ImportSummary {
 }
 
 /**
- * Bring in a bank zip (or loose .md seed files). Merges with what's here —
+ * Bring in a schema zip (or loose .md grain files). Merges with what's here —
  * nothing on this device is overwritten or lost.
  */
 export async function importFiles(files: File[]): Promise<ImportSummary> {
@@ -149,18 +149,18 @@ export async function importFiles(files: File[]): Promise<ImportSummary> {
         if (!path.endsWith('/')) set.set(path, strFromU8(data));
       }
     } else if (f.name.endsWith('.md')) {
-      set.set(`seeds/${f.name}`, await f.text());
+      set.set(`grains/${f.name}`, await f.text());
     }
   }
-  const result = filesToBank(set);
+  const result = fromFiles(set);
   if (result.manifest && !canWrite(result.manifest)) {
-    throw new Error('This bank was made by a newer version of Seedbank. Update the app before importing it.');
+    throw new Error('This schema was made by a newer version of Schema. Update the app before importing it.');
   }
   let summary: ImportSummary = { added: 0, merged: 0, errors: result.errors };
-  await db.transaction('rw', db.seeds, db.kv, async () => {
-    const existing = await db.seeds.toArray();
-    const { seeds, added, merged } = mergeBanks(existing, result.seeds);
-    await db.seeds.bulkPut(seeds);
+  await db.transaction('rw', db.grains, db.kv, async () => {
+    const existing = await db.grains.toArray();
+    const { grains, added, merged } = mergeGrainSets(existing, result.grains);
+    await db.grains.bulkPut(grains);
     if (result.review) {
       // Keep this device's schedule where it has one.
       await db.setReview({ ...result.review, ...(await db.getReview()) });

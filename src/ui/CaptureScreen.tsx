@@ -1,23 +1,23 @@
 /**
  * The front door (docs/design.md §6.2): one big input, focused on open.
  * Type, press Enter, done. Chips for kind / category / confidence appear for
- * the seed just saved; ignore them and it stays Unsorted. While typing,
- * matching seeds already in the bank show below, so a near-duplicate can
+ * the grain just saved; ignore them and it stays Unsorted. While typing,
+ * matching grains already in the schema show below, so a near-duplicate can
  * become a revision instead.
  */
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { capture, editMeta, reviseSeed } from '../app/actions';
-import { href, useSeeds } from '../app/hooks';
+import { capture, editMeta, reviseGrain } from '../app/actions';
+import { href, useGrains } from '../app/hooks';
 import { allCategories, recentCategories } from '../core/categories';
 import { KIND_INFO, suggestKind } from '../core/kinds';
-import { similarSeeds } from '../core/search';
-import { currentRevision, displayTitle, SOFT_LENGTH } from '../core/seed';
-import type { Kind, Seed } from '../core/types';
-import { SeedEditor } from './SeedEditor';
-import { CategoryPicker, ConfidenceChips, Icon, KindBadge, KindChips } from './parts';
+import { similarGrains } from '../core/search';
+import { currentRevision, displayTitle, SOFT_LENGTH } from '../core/grain';
+import type { Kind, Grain } from '../core/types';
+import { GrainEditor } from './GrainEditor';
+import { CategoryPicker, ConfidenceChips, Icon, KindBadge, KindChips, Logo } from './parts';
 
 export function CaptureScreen() {
-  const seeds = useSeeds() ?? [];
+  const grains = useGrains() ?? [];
   const [text, setText] = useState('');
   const [justSaved, setJustSaved] = useState<string | null>(null);
   const [expanded, setExpanded] = useState(false);
@@ -33,16 +33,16 @@ export function CaptureScreen() {
     el.style.height = `${el.scrollHeight}px`;
   }, [text]);
 
-  const matches = useMemo(() => (text.trim().length >= 3 ? similarSeeds(seeds, text, 4) : []), [seeds, text]);
-  const saved = justSaved ? seeds.find((s) => s.id === justSaved) : undefined;
+  const matches = useMemo(() => (text.trim().length >= 3 ? similarGrains(grains, text, 4) : []), [grains, text]);
+  const saved = justSaved ? grains.find((s) => s.id === justSaved) : undefined;
 
   const save = async () => {
     const t = text.trim();
     if (!t) return;
     const kind = suggestKind(t);
-    const seed = await capture({ text: t, kind });
+    const grain = await capture({ text: t, kind });
     setText('');
-    setJustSaved(seed.id);
+    setJustSaved(grain.id);
     inputRef.current?.focus();
   };
 
@@ -53,19 +53,19 @@ export function CaptureScreen() {
           <button className="icon-button" onClick={() => setExpanded(false)} aria-label="Back">
             <Icon name="back" />
           </button>
-          <h1>New seed</h1>
+          <h1>New grain</h1>
         </header>
-        <SeedEditor
+        <GrainEditor
           mode="new"
           initial={{ text, kind: suggestKind(text) }}
-          categories={allCategories(seeds)}
-          recentCategories={recentCategories(seeds)}
+          categories={allCategories(grains)}
+          recentCategories={recentCategories(grains)}
           onCancel={() => setExpanded(false)}
           onSave={async (input) => {
-            const seed = await capture(input);
+            const grain = await capture(input);
             setText('');
             setExpanded(false);
-            setJustSaved(seed.id);
+            setJustSaved(grain.id);
           }}
         />
       </div>
@@ -76,9 +76,10 @@ export function CaptureScreen() {
     <div className="screen capture">
       <div className="capture-hero">
         <div className="brand">
-          <Icon name="sprout" size={28} />
-          <span>Seedbank</span>
+          <Logo size={34} />
+          <span>Schema</span>
         </div>
+        <p className="tagline">Turn tidbits in passing into guideposts.</p>
 
         <form
           className="capture-box"
@@ -92,7 +93,7 @@ export function CaptureScreen() {
             rows={1}
             value={text}
             placeholder="What have you noticed, learned or come to believe?"
-            aria-label="New seed"
+            aria-label="New grain"
             onChange={(e) => {
               setText(e.target.value);
               if (justSaved) setJustSaved(null);
@@ -107,13 +108,13 @@ export function CaptureScreen() {
           <button type="button" className="icon-button subtle" onClick={() => setExpanded(true)} aria-label="Open full editor" title="Full editor">
             <Icon name="expand" size={18} />
           </button>
-          <button type="submit" className="icon-button primary" disabled={!text.trim()} aria-label="Save seed">
+          <button type="submit" className="icon-button primary" disabled={!text.trim()} aria-label="Save grain">
             <Icon name="send" />
           </button>
         </form>
         <div className="capture-hint">
           {text.length > SOFT_LENGTH ? (
-            <span className="soft-limit">Seeds work best short — maybe a title and a summary first line? (Keep going if you need to.)</span>
+            <span className="soft-limit">Grains work best short — maybe a title and a summary first line? (Keep going if you need to.)</span>
           ) : (
             <span>
               <kbd>Enter</kbd> to save · <kbd>Shift</kbd>+<kbd>Enter</kbd> for a new line
@@ -121,13 +122,13 @@ export function CaptureScreen() {
           )}
         </div>
 
-        {saved && <SavedCard seed={saved} seeds={seeds} onDone={() => setJustSaved(null)} />}
+        {saved && <SavedCard grain={saved} grains={grains} onDone={() => setJustSaved(null)} />}
 
         {matches.length > 0 && (
-          <section className="matches" aria-label="Similar seeds already in your bank">
-            <h2>Already in your bank?</h2>
+          <section className="matches" aria-label="Similar grains already in your schema">
+            <h2>Already in your schema?</h2>
             {matches.map((m) => (
-              <MatchRow key={m.id} seed={m} draft={text} onRevised={() => setText('')} />
+              <MatchRow key={m.id} grain={m} draft={text} onRevised={() => setText('')} />
             ))}
           </section>
         )}
@@ -136,41 +137,41 @@ export function CaptureScreen() {
   );
 }
 
-/** Quick filing for the seed just captured. Every tap saves immediately. */
-function SavedCard({ seed, seeds, onDone }: { seed: Seed; seeds: Seed[]; onDone: () => void }) {
-  const confidence = currentRevision(seed).confidence;
-  const showConfidence = !seed.kind || KIND_INFO[seed.kind].hasConfidence;
-  const setKind = (kind: Kind | undefined) => void editMeta(seed.id, { kind: kind ?? null });
+/** Quick filing for the grain just captured. Every tap saves immediately. */
+function SavedCard({ grain, grains, onDone }: { grain: Grain; grains: Grain[]; onDone: () => void }) {
+  const confidence = currentRevision(grain).confidence;
+  const showConfidence = !grain.kind || KIND_INFO[grain.kind].hasConfidence;
+  const setKind = (kind: Kind | undefined) => void editMeta(grain.id, { kind: kind ?? null });
   return (
     <section className="saved-card" aria-live="polite">
       <div className="saved-head">
         <span className="saved-check">
           <Icon name="check" size={16} />
         </span>
-        <span className="saved-title">Saved{seed.category ? '' : ' to Unsorted'}</span>
-        <a className="link" href={href({ name: 'seed', id: seed.id })}>
+        <span className="saved-title">Saved{grain.category ? '' : ' to Unsorted'}</span>
+        <a className="link" href={href({ name: 'grain', id: grain.id })}>
           Open
         </a>
         <button className="icon-button subtle small" onClick={onDone} aria-label="Dismiss">
           <Icon name="close" size={16} />
         </button>
       </div>
-      <div className="saved-quote">{displayTitle(seed)}</div>
+      <div className="saved-quote">{displayTitle(grain)}</div>
       <div className="field-label">Kind</div>
-      <KindChips value={seed.kind} onChange={setKind} />
+      <KindChips value={grain.kind} onChange={setKind} />
       <div className="field-label">Category</div>
       <CategoryPicker
-        value={seed.category}
-        recent={recentCategories(seeds.filter((s) => s.id !== seed.id))}
-        all={allCategories(seeds)}
-        onChange={(c) => void editMeta(seed.id, { category: c ?? null })}
+        value={grain.category}
+        recent={recentCategories(grains.filter((s) => s.id !== grain.id))}
+        all={allCategories(grains)}
+        onChange={(c) => void editMeta(grain.id, { category: c ?? null })}
       />
       {showConfidence && (
         <>
           <div className="field-label">Confidence</div>
           <ConfidenceChips
             value={confidence}
-            onChange={(c) => void reviseSeed(seed.id, { text: currentRevision(seed).text, confidence: c })}
+            onChange={(c) => void reviseGrain(grain.id, { text: currentRevision(grain).text, confidence: c })}
           />
         </>
       )}
@@ -178,15 +179,15 @@ function SavedCard({ seed, seeds, onDone }: { seed: Seed; seeds: Seed[]; onDone:
   );
 }
 
-function MatchRow({ seed, draft, onRevised }: { seed: Seed; draft: string; onRevised: () => void }) {
+function MatchRow({ grain, draft, onRevised }: { grain: Grain; draft: string; onRevised: () => void }) {
   const [confirm, setConfirm] = useState(false);
   return (
     <div className="match-row">
-      <a href={href({ name: 'seed', id: seed.id })} className="match-main">
-        <div className="match-title">{displayTitle(seed)}</div>
-        <div className="seed-row-meta">
-          <KindBadge kind={seed.kind} />
-          <span className="cat">{seed.category ?? 'Unsorted'}</span>
+      <a href={href({ name: 'grain', id: grain.id })} className="match-main">
+        <div className="match-title">{displayTitle(grain)}</div>
+        <div className="grain-row-meta">
+          <KindBadge kind={grain.kind} />
+          <span className="cat">{grain.category ?? 'Unsorted'}</span>
         </div>
       </a>
       {confirm ? (
@@ -194,9 +195,9 @@ function MatchRow({ seed, draft, onRevised }: { seed: Seed; draft: string; onRev
           <button
             className="button small primary"
             onClick={async () => {
-              await reviseSeed(seed.id, { text: draft, confidence: currentRevision(seed).confidence });
+              await reviseGrain(grain.id, { text: draft, confidence: currentRevision(grain).confidence });
               onRevised();
-              location.hash = href({ name: 'seed', id: seed.id });
+              location.hash = href({ name: 'grain', id: grain.id });
             }}
           >
             Replace its text
@@ -206,7 +207,7 @@ function MatchRow({ seed, draft, onRevised }: { seed: Seed; draft: string; onRev
           </button>
         </div>
       ) : (
-        <button className="button small" onClick={() => setConfirm(true)} title="Save what you typed as a new revision of this seed">
+        <button className="button small" onClick={() => setConfirm(true)} title="Save what you typed as a new revision of this grain">
           Revise this
         </button>
       )}
