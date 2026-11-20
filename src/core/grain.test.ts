@@ -12,6 +12,7 @@ import {
   reaffirm,
   removeLink,
   connections,
+  splitTidbit,
   spinOff,
   revise,
   succeed,
@@ -201,5 +202,30 @@ describe('connections', () => {
       ['Supported by', source.id],
       ['Contradicted by', other.id],
     ]);
+  });
+});
+
+describe('tidbit and details', () => {
+  it('keeps a short tidbit and its details apart', () => {
+    const g = createGrain(testCtx(), { text: 'Clouds form where the conditions are right', details: 'Warm moist air rises,\ncools, and condenses.' });
+    expect(currentRevision(g)).toMatchObject({ text: 'Clouds form where the conditions are right', details: 'Warm moist air rises,\ncools, and condenses.' });
+    expect(displayTitle(g)).toBe('Clouds form where the conditions are right');
+  });
+
+  it('splits a multi-line tidbit into tidbit + details when no details are given', () => {
+    expect(splitTidbit('First line\n\nmore\nlines  ')).toEqual({ text: 'First line', details: 'more\nlines' });
+    expect(splitTidbit('Just one')).toEqual({ text: 'Just one' });
+    expect(splitTidbit('Tidbit', '  ')).toEqual({ text: 'Tidbit' });
+  });
+
+  it('treats a details change as a revision, and an empty string as clearing them', () => {
+    const ctx = testCtx();
+    const g = createGrain(ctx, { text: 'T', details: 'D' });
+    ctx.advance(1);
+    expect(revise(ctx, g, { text: 'T', details: 'D' })).toBe(g);
+    const r = revise(ctx, g, { text: 'T', details: 'D, expanded' });
+    expect(currentRevision(r).details).toBe('D, expanded');
+    ctx.advance(1);
+    expect(currentRevision(revise(ctx, r, { text: 'T', details: '' })).details).toBeUndefined();
   });
 });

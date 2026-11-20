@@ -1,7 +1,7 @@
 import { useId, useState, type ReactNode } from 'react';
 import { CONFIDENCE_LABEL, KIND_INFO } from '../core/kinds';
 import { currentRevision, displayTitle } from '../core/grain';
-import { CONFIDENCES, KINDS, type Confidence, type Kind, type Grain } from '../core/types';
+import { CONFIDENCES, KINDS, type Confidence, type Kind, type Grain, type Revision } from '../core/types';
 import { href } from '../app/hooks';
 import { relativeDate } from './format';
 
@@ -162,8 +162,9 @@ export function TagsField({ value, onChange }: { value: string[]; onChange: (t: 
 
 export function GrainRow({ grain, now }: { grain: Grain; now: string }) {
   const title = displayTitle(grain);
-  const text = currentRevision(grain).text;
-  const rest = grain.title ? text : text.slice(text.indexOf(title) + title.length).trim();
+  const cur = currentRevision(grain);
+  // Under the headline: the details, or (for older grains) whatever follows it.
+  const rest = cur.details ?? (grain.title ? cur.text : cur.text.slice(cur.text.indexOf(title) + title.length).trim());
   return (
     <a className={`grain-row status-${grain.status}`} href={href({ name: 'grain', id: grain.id })}>
       <div className="grain-row-title">{title}</div>
@@ -180,6 +181,16 @@ export function GrainRow({ grain, now }: { grain: Grain; now: string }) {
 
 export function GrainText({ text }: { text: string }) {
   return <div className="grain-text">{text}</div>;
+}
+
+/** A revision as it's read: the tidbit, then its details if it has any. */
+export function RevisionBody({ rev, size = 'normal' }: { rev: Revision; size?: 'normal' | 'large' | 'small' }) {
+  return (
+    <div className={`revision-body ${size}`}>
+      <div className="grain-tidbit">{rev.text}</div>
+      {rev.details && <div className="grain-details">{rev.details}</div>}
+    </div>
+  );
 }
 
 export function Empty({ icon = 'schema', title, children }: { icon?: IconName; title: string; children?: ReactNode }) {

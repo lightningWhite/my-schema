@@ -49,8 +49,11 @@ export interface Retirement {
 export interface Revision {
   type: 'revision';
   at: string;
+  /** The tidbit itself: short, the headline everywhere the grain is shown. */
   text: string;
   confidence?: Confidence;
+  /** Optional longer explanation behind the tidbit in `text`. */
+  details?: string;
   /** Why it changed from the previous revision. */
   why?: string;
 }

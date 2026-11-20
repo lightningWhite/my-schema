@@ -10,7 +10,8 @@ import { currentRevision, displayTitle } from './grain';
 import type { Grain } from './types';
 
 /** The schema format this app reads and writes. */
-export const FORMAT_VERSION = 1;
+// 2: revisions may have a `<!-- details -->` block. Version-1 files read fine.
+export const FORMAT_VERSION = 2;
 
 export interface Manifest {
   formatVersion: number;
@@ -38,6 +39,7 @@ export interface IndexEntry {
   category?: string;
   tags: string[];
   text: string;
+  details?: string;
   confidence?: string;
   updated: string;
   revisions: number;
@@ -56,6 +58,7 @@ export function buildIndex(grains: Grain[]): { formatVersion: number; grains: In
         status: s.status,
         tags: s.tags,
         text: cur.text,
+        ...(cur.details ? { details: cur.details } : {}),
         updated: s.updated,
         revisions: s.history.filter((h) => h.type === 'revision').length,
         origin: s.origin,

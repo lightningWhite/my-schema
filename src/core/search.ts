@@ -41,7 +41,8 @@ export function searchGrains(grains: Grain[], query: string, limit = 50): Search
   for (const grain of grains) {
     const title = words(displayTitle(grain));
     const meta = words([grain.category ?? '', ...grain.tags, grain.source ?? ''].join(' '));
-    const body = words(currentRevision(grain).text);
+    const cur = currentRevision(grain);
+    const body = words(`${cur.text} ${cur.details ?? ''}`);
     let score = 0;
     let all = true;
     for (let i = 0; i < q.length; i++) {

@@ -43,7 +43,10 @@ export function AboutScreen() {
         <h2>How it works</h2>
         <dl className="about-steps">
           <dt>Capture</dt>
-          <dd>Type a tidbit and press Enter. That's all it takes; file it now or later. Each one becomes a grain — as in a grain of truth.</dd>
+          <dd>
+            Type a tidbit and press Enter. That's all it takes; file it now or later. Need more room? Shift+Enter adds details under it — the
+            context, the why, the example. Each one becomes a grain, as in a grain of truth.
+          </dd>
           <dt>Organize</dt>
           <dd>Give unfiled grains a category and a kind, one at a time, whenever you have a minute.</dd>
           <dt>Review</dt>

@@ -519,8 +519,7 @@ kbd {
 
 .capture-box {
   display: flex;
-  align-items: flex-end;
-  gap: 4px;
+  flex-direction: column;
   padding: 8px 8px 8px 22px;
   background: var(--surface);
   border: 1px solid var(--line);
@@ -536,6 +535,11 @@ kbd {
     var(--shadow),
     0 0 0 4px var(--accent-soft);
 }
+.capture-row {
+  display: flex;
+  align-items: flex-end;
+  gap: 4px;
+}
 .capture-box textarea {
   flex: 1;
   border: none;
@@ -547,6 +551,23 @@ kbd {
   line-height: 1.5;
   max-height: 50vh;
   overflow-y: auto;
+}
+.capture-box textarea.capture-details {
+  flex: none;
+  font-size: 0.98rem;
+  color: var(--ink-2);
+  border-top: 1px dashed var(--line);
+  border-radius: 0;
+  margin: 2px 14px 6px 0;
+  padding: 10px 0 4px;
+  animation: rise 0.15s ease-out;
+}
+.link-button.quiet {
+  color: inherit;
+  text-decoration: none;
+}
+.link-button.quiet:hover {
+  color: var(--accent);
 }
 .capture-hint {
   text-align: center;
@@ -658,6 +679,42 @@ kbd {
   font-family: var(--text-font);
   font-size: 1.12rem;
   line-height: 1.6;
+}
+.grain-tidbit,
+.grain-details {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  font-family: var(--text-font);
+}
+.grain-tidbit {
+  font-size: 1.15rem;
+  font-weight: 550;
+  line-height: 1.45;
+}
+.grain-details {
+  margin-top: 8px;
+  font-size: 1rem;
+  line-height: 1.6;
+  color: var(--ink-2);
+}
+.revision-body.large .grain-tidbit {
+  font-size: 1.4rem;
+  line-height: 1.35;
+}
+.revision-body.large .grain-details {
+  margin-top: 12px;
+  font-size: 1.05rem;
+}
+.revision-body.small .grain-tidbit {
+  font-size: 1rem;
+  color: var(--ink-2);
+}
+.revision-body.small .grain-details {
+  font-size: 0.92rem;
+  margin-top: 4px;
+}
+.card .revision-body {
+  margin-top: 10px;
 }
 .source {
   margin-top: 6px;
@@ -903,18 +960,22 @@ kbd {
   display: flex;
   flex-direction: column;
 }
-.editor-title {
+.editor .field-label.first {
+  margin-top: 0;
+}
+.editor-tidbit {
   font-family: var(--text-font);
   font-size: 1.15rem;
-  font-weight: 600;
-  margin-bottom: 8px;
+  font-weight: 550;
+  line-height: 1.45;
+  resize: none;
+  overflow: hidden;
 }
-.editor-text {
+.editor-details {
   font-family: var(--text-font);
-  font-size: 1.1rem;
+  font-size: 1rem;
   line-height: 1.6;
   resize: vertical;
-  min-height: 120px;
 }
 .editor .field {
   margin-top: 4px;

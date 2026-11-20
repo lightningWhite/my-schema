@@ -1,18 +1,19 @@
 /**
  * The full editor. Three modes:
- *  - new:     everything (text, title, kind, category, tags, source, confidence)
- *  - revise:  text, confidence and why it changed — a new revision
+ *  - new:     everything (tidbit, details, kind, category, tags, source, confidence)
+ *  - revise:  tidbit, details, confidence and why it changed — a new revision
  *  - succeed: like new, plus why the old idea is being replaced
  */
 import { useEffect, useRef, useState } from 'react';
 import { KIND_INFO } from '../core/kinds';
-import { SOFT_LENGTH, type NewGrain } from '../core/grain';
+import { TIDBIT_SOFT_LENGTH, type NewGrain } from '../core/grain';
 import type { Confidence, Kind } from '../core/types';
 import { CategoryPicker, ConfidenceChips, KindChips, TagsField } from './parts';
 
 export interface EditorValue {
+  /** The tidbit. */
   text: string;
-  title?: string;
+  details?: string;
   kind?: Kind;
   category?: string;
   tags?: string[];
@@ -35,6 +36,7 @@ export function GrainEditor({ mode, initial, categories = [], recentCategories =
   const [v, setV] = useState<EditorValue>(initial);
   const [busy, setBusy] = useState(false);
   const textRef = useRef<HTMLTextAreaElement>(null);
+  const detailsRef = useRef<HTMLTextAreaElement>(null);
   const set = (patch: Partial<EditorValue>) => setV((cur) => ({ ...cur, ...patch }));
 
   useEffect(() => {
@@ -44,23 +46,33 @@ export function GrainEditor({ mode, initial, categories = [], recentCategories =
     el.setSelectionRange(el.value.length, el.value.length);
   }, []);
 
+  // Auto-grow both fields with their content.
   useEffect(() => {
-    const el = textRef.current;
-    if (!el) return;
-    el.style.height = 'auto';
-    el.style.height = `${Math.max(el.scrollHeight, 120)}px`;
-  }, [v.text]);
+    for (const [el, min] of [
+      [textRef.current, 0],
+      [detailsRef.current, 110],
+    ] as const) {
+      if (!el) continue;
+      el.style.height = 'auto';
+      el.style.height = `${Math.max(el.scrollHeight, min)}px`;
+    }
+  }, [v.text, v.details]);
 
   const full = mode !== 'revise';
   const showConfidence = !v.kind || KIND_INFO[v.kind].hasConfidence;
-  const unchanged = mode === 'revise' && v.text.trim() === initial.text.trim() && v.confidence === initial.confidence;
+  const unchanged =
+    mode === 'revise' &&
+    v.text.trim() === initial.text.trim() &&
+    (v.details ?? '').trim() === (initial.details ?? '').trim() &&
+    v.confidence === initial.confidence;
   const canSave = v.text.trim().length > 0 && !unchanged && !busy;
 
   const submit = async () => {
     if (!canSave) return;
     setBusy(true);
     try {
-      await onSave({ ...v, confidence: showConfidence ? v.confidence : undefined });
+      // An empty details string means "no details" (cleared), not "unchanged".
+      await onSave({ ...v, details: v.details ?? '', confidence: showConfidence ? v.confidence : undefined });
     } finally {
       setBusy(false);
     }
@@ -80,20 +92,33 @@ export function GrainEditor({ mode, initial, categories = [], recentCategories =
         } else if (e.key === 'Escape') onCancel();
       }}
     >
-      {full && (
-        <input className="editor-title" placeholder="Title (optional)" value={v.title ?? ''} onChange={(e) => set({ title: e.target.value })} />
-      )}
+      <span className="field-label first">Tidbit</span>
       <textarea
         ref={textRef}
-        className="editor-text"
+        rows={1}
+        className="editor-tidbit"
         value={v.text}
-        placeholder={mode === 'succeed' ? 'The idea that replaces it…' : 'Write it down…'}
+        placeholder={mode === 'succeed' ? 'The idea that replaces it' : 'The short version'}
         onChange={(e) => set({ text: e.target.value })}
-        aria-label="Grain text"
+        onKeyDown={(e) => {
+          // The tidbit is one line; Enter moves on to the details.
+          if (e.key === 'Enter' && !e.metaKey && !e.ctrlKey && !e.nativeEvent.isComposing) {
+            e.preventDefault();
+            detailsRef.current?.focus();
+          }
+        }}
+        aria-label="Tidbit"
       />
-      {v.text.length > SOFT_LENGTH && (
-        <div className="soft-limit">Grains work best short — maybe a title and a summary first line? Long is fine if it needs it.</div>
-      )}
+      {v.text.length > TIDBIT_SOFT_LENGTH && <div className="soft-limit">Tidbits work best short — the rest can go in the details.</div>}
+      <span className="field-label">Details (optional)</span>
+      <textarea
+        ref={detailsRef}
+        className="editor-details"
+        value={v.details ?? ''}
+        placeholder="The context, the why, the example — whatever you'll want to remember about it"
+        onChange={(e) => set({ details: e.target.value })}
+        aria-label="Details"
+      />
 
       {(mode === 'revise' || mode === 'succeed') && (
         <label className="field">

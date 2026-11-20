@@ -127,3 +127,43 @@ describe('round trip (property)', () => {
     );
   });
 });
+
+describe('details blocks', () => {
+  it('reads and writes details between the tidbit and the why', () => {
+    const file = `---
+id: 01JDA7Q3V2N8XK5M4R6T9WBYCE
+status: active
+tags: []
+links: []
+origin: null
+updated: 2027-07-14T03:12:00Z
+---
+
+<!-- rev at=2027-07-14T03:12:00Z confidence=confident -->
+Clouds form where the conditions are right
+
+<!-- details -->
+Warm, moist air rises and cools; water condenses on dust.
+
+<!-- why -->
+Read about it after a flight.
+
+`;
+    const g = parseGrain(file);
+    expect(g.history[0]).toEqual({
+      type: 'revision',
+      at: '2027-07-14T03:12:00Z',
+      confidence: 'confident',
+      text: 'Clouds form where the conditions are right',
+      details: 'Warm, moist air rises and cools; water condenses on dust.',
+      why: 'Read about it after a flight.',
+    });
+    expect(serializeGrain(g)).toBe(file);
+  });
+
+  it('rejects details after a why, or twice', () => {
+    const base = '---\nid: x\n---\n\n<!-- rev at=2020-01-01T00:00:00Z -->\nT\n\n';
+    expect(() => parseGrain(base + '<!-- why -->\nw\n\n<!-- details -->\nd\n')).toThrow(/details block/);
+    expect(() => parseGrain(base + '<!-- details -->\nd\n\n<!-- details -->\nd\n')).toThrow(/details block/);
+  });
+});

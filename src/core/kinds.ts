@@ -10,7 +10,7 @@ export interface KindInfo {
 
 export const KIND_INFO: Record<Kind, KindInfo> = {
   idea: { label: 'Idea', hint: 'Something you could make, try or do', hasConfidence: true },
-  insight: { label: 'Insight', hint: 'Something you realized, noticed or learned', hasConfidence: true },
+  insight: { label: 'Insight', hint: 'Something you noticed, realized or learned — observations and lessons', hasConfidence: true },
   belief: { label: 'Belief', hint: 'How you think the world works', hasConfidence: true },
   value: { label: 'Value', hint: 'Something you live by', hasConfidence: true },
   practice: { label: 'Practice', hint: 'Something you do, or mean to do, because it helps', hasConfidence: true },
@@ -44,7 +44,7 @@ const STARTS: Array<[RegExp, Kind]> = [
   [/^(don'?t|do not|avoid)\b/, 'tip'],
   [/^(i|we) (value|stand for)\b/, 'value'],
   [/^(maybe|perhaps|i (bet|suspect|wonder if|guess))\b/, 'speculation'],
-  [/^(i (learned|realized|noticed)|turns out|lesson:)/, 'insight'],
+  [/^(i (learned|realized|noticed|observed)|i('ve| have) (noticed|observed|learned|realized)|turns out|lesson:|observation:)/, 'insight'],
   [/^(tip:|how to\b|to [a-z]+ .*, (use|try|do)\b)/, 'tip'],
   [/^(idea:|what if\b|we could\b|i could\b|someone should\b)/, 'idea'],
   [/^(fact:|did you know\b)/, 'fact'],

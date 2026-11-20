@@ -44,6 +44,7 @@ const arbRevision = fc.record(
     type: fc.constant('revision' as const),
     at: arbAt,
     text: arbText,
+    details: arbText,
     confidence: fc.constantFrom(...CONFIDENCES),
     why: arbText,
   },

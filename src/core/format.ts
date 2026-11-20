@@ -10,8 +10,11 @@
  *   <!-- rev at=… confidence=… -->
  *   text
  *
+ *   <!-- details -->
+ *   longer details (optional)
+ *
  *   <!-- why -->
- *   why text
+ *   why text (optional)
  *
  * History is newest first. Lines in grain text that would be mistaken for a
  * marker are escaped. Unknown frontmatter fields round-trip unchanged.
@@ -55,7 +58,7 @@ const KNOWN_KEYS = [
  * inserts a backslash after `<!-- `; `<!-- \` is itself in the list so that
  * unescaping (remove one backslash) is exact.
  */
-const ESCAPE_PREFIXES = ['<!-- rev ', '<!-- reaffirmed ', '<!-- why', '<!-- \\'];
+const ESCAPE_PREFIXES = ['<!-- rev ', '<!-- reaffirmed ', '<!-- why', '<!-- details', '<!-- \\'];
 
 export function escapeText(text: string): string {
   return text
@@ -100,7 +103,8 @@ export function serializeGrain(grain: Grain): string {
     } else {
       const conf = entry.confidence ? ` confidence=${entry.confidence}` : '';
       out += `<!-- rev at=${entry.at}${conf} -->\n${escapeText(entry.text)}\n\n`;
-      if (entry.why !== undefined) out += `<!-- why -->\n${escapeText(entry.why)}\n\n`;
+      if (entry.details !== undefined) out += `${DETAILS_LINE}\n${escapeText(entry.details)}\n\n`;
+      if (entry.why !== undefined) out += `${WHY_LINE}\n${escapeText(entry.why)}\n\n`;
     }
   }
   return out;
@@ -111,9 +115,10 @@ export function serializeGrain(grain: Grain): string {
 const REV_RE = /^<!-- rev at=(\S+)(?: confidence=(\S+))? -->$/;
 const REAFFIRM_RE = /^<!-- reaffirmed at=(\S+) -->$/;
 const WHY_LINE = '<!-- why -->';
+const DETAILS_LINE = '<!-- details -->';
 
 function isMarker(line: string): boolean {
-  return line.startsWith('<!-- rev ') || line.startsWith('<!-- reaffirmed ') || line === WHY_LINE;
+  return line.startsWith('<!-- rev ') || line.startsWith('<!-- reaffirmed ') || line === WHY_LINE || line === DETAILS_LINE;
 }
 
 /** Block content ends with the blank line the writer adds; tolerate hand edits. */
@@ -164,6 +169,12 @@ export function parseGrain(file: string): Grain {
         text: blockText(content),
         ...(confidence ? { confidence: confidence as Confidence } : {}),
       });
+    } else if (marker === DETAILS_LINE) {
+      const last = history[history.length - 1];
+      if (!last || last.type !== 'revision' || last.details !== undefined || last.why !== undefined) {
+        throw new GrainFormatError('A details block must follow a revision, before its why');
+      }
+      last.details = blockText(content);
     } else if (marker === WHY_LINE) {
       const last = history[history.length - 1];
       if (!last || last.type !== 'revision' || last.why !== undefined) {

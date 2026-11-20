@@ -11,7 +11,7 @@ import { href, useGrains, useNow } from '../app/hooks';
 import { allCategories, recentCategories } from '../core/categories';
 import { KIND_INFO, suggestKind } from '../core/kinds';
 import { similarGrains } from '../core/search';
-import { currentRevision, displayTitle, SOFT_LENGTH } from '../core/grain';
+import { currentRevision, displayTitle, splitTidbit, TIDBIT_SOFT_LENGTH } from '../core/grain';
 import type { Kind, Grain } from '../core/types';
 import { GrainEditor } from './GrainEditor';
 import { PassingStrip } from './PassingStrip';
@@ -21,9 +21,12 @@ export function CaptureScreen() {
   const grains = useGrains() ?? [];
   const now = useNow();
   const [text, setText] = useState('');
+  const [details, setDetails] = useState('');
+  const [showDetails, setShowDetails] = useState(false);
   const [justSaved, setJustSaved] = useState<string | null>(null);
   const [expanded, setExpanded] = useState(false);
   const inputRef = useRef<HTMLTextAreaElement>(null);
+  const detailsRef = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => inputRef.current?.focus(), []);
 
@@ -34,6 +37,18 @@ export function CaptureScreen() {
     el.style.height = 'auto';
     el.style.height = `${el.scrollHeight}px`;
   }, [text]);
+  useEffect(() => {
+    const el = detailsRef.current;
+    if (!el) return;
+    el.style.height = 'auto';
+    el.style.height = `${Math.max(el.scrollHeight, 72)}px`;
+  }, [details, showDetails]);
+
+  const openDetails = () => {
+    setShowDetails(true);
+    // After the field renders.
+    requestAnimationFrame(() => detailsRef.current?.focus());
+  };
 
   const matches = useMemo(() => (text.trim().length >= 3 ? similarGrains(grains, text, 4) : []), [grains, text]);
   const saved = justSaved ? grains.find((s) => s.id === justSaved) : undefined;
@@ -42,8 +57,10 @@ export function CaptureScreen() {
     const t = text.trim();
     if (!t) return;
     const kind = suggestKind(t);
-    const grain = await capture({ text: t, kind });
+    const grain = await capture({ text: t, details, kind });
     setText('');
+    setDetails('');
+    setShowDetails(false);
     setJustSaved(grain.id);
     inputRef.current?.focus();
   };
@@ -59,13 +76,15 @@ export function CaptureScreen() {
         </header>
         <GrainEditor
           mode="new"
-          initial={{ text, kind: suggestKind(text) }}
+          initial={{ text, details, kind: suggestKind(text) }}
           categories={allCategories(grains)}
           recentCategories={recentCategories(grains)}
           onCancel={() => setExpanded(false)}
           onSave={async (input) => {
             const grain = await capture(input);
             setText('');
+            setDetails('');
+            setShowDetails(false);
             setExpanded(false);
             setJustSaved(grain.id);
           }}
@@ -86,12 +105,13 @@ export function CaptureScreen() {
         </p>
 
         <form
-          className="capture-box"
+          className={`capture-box${showDetails ? ' with-details' : ''}`}
           onSubmit={(e) => {
             e.preventDefault();
             void save();
           }}
         >
+          <div className="capture-row">
           <textarea
             ref={inputRef}
             rows={1}
@@ -103,9 +123,22 @@ export function CaptureScreen() {
               if (justSaved) setJustSaved(null);
             }}
             onKeyDown={(e) => {
-              if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) {
-                e.preventDefault();
-                void save();
+              if (e.key !== 'Enter' || e.nativeEvent.isComposing) return;
+              e.preventDefault();
+              // The tidbit is one line: Enter saves, Shift+Enter goes to the details.
+              if (e.shiftKey) openDetails();
+              else void save();
+            }}
+            onPaste={(e) => {
+              // Pasting several lines: first line is the tidbit, the rest are details.
+              const pasted = e.clipboardData.getData('text');
+              if (!pasted.includes('\n') || text.trim() || details.trim()) return;
+              e.preventDefault();
+              const split = splitTidbit(pasted);
+              setText(split.text);
+              if (split.details) {
+                setDetails(split.details);
+                setShowDetails(true);
               }
             }}
           />
@@ -115,13 +148,44 @@ export function CaptureScreen() {
           <button type="submit" className="icon-button primary" disabled={!text.trim()} aria-label="Save grain">
             <Icon name="send" />
           </button>
+          </div>
+          {showDetails && (
+            <textarea
+              ref={detailsRef}
+              className="capture-details"
+              value={details}
+              placeholder="Details — the context, the why, the example"
+              aria-label="Details"
+              onChange={(e) => setDetails(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
+                  e.preventDefault();
+                  void save();
+                } else if (e.key === 'Backspace' && !details) {
+                  // Backspace in an empty details field goes back to the tidbit.
+                  e.preventDefault();
+                  setShowDetails(false);
+                  inputRef.current?.focus();
+                }
+              }}
+            />
+          )}
         </form>
         <div className="capture-hint">
-          {text.length > SOFT_LENGTH ? (
-            <span className="soft-limit">Grains work best short — maybe a title and a summary first line? (Keep going if you need to.)</span>
+          {text.length > TIDBIT_SOFT_LENGTH && !showDetails ? (
+            <span className="soft-limit">
+              Tidbits work best short. <button type="button" className="link-button" onClick={openDetails}>Put the rest in details</button>
+            </span>
+          ) : showDetails ? (
+            <span>
+              <kbd>Ctrl</kbd>+<kbd>Enter</kbd> or → to save
+            </span>
           ) : (
             <span>
-              <kbd>Enter</kbd> to save · <kbd>Shift</kbd>+<kbd>Enter</kbd> for a new line
+              <kbd>Enter</kbd> to save ·{' '}
+              <button type="button" className="link-button quiet" onClick={openDetails}>
+                <kbd>Shift</kbd>+<kbd>Enter</kbd> to add details
+              </button>
             </span>
           )}
         </div>
@@ -137,7 +201,7 @@ export function CaptureScreen() {
           </section>
         )}
       </div>
-      <PassingStrip grains={grains} now={now} quiet={text.trim().length > 0} exclude={justSaved ? [justSaved] : []} />
+      <PassingStrip grains={grains} now={now} quiet={text.trim().length > 0 || showDetails} exclude={justSaved ? [justSaved] : []} />
     </div>
   );
 }
@@ -176,7 +240,7 @@ function SavedCard({ grain, grains, onDone }: { grain: Grain; grains: Grain[]; o
           <div className="field-label">Confidence</div>
           <ConfidenceChips
             value={confidence}
-            onChange={(c) => void reviseGrain(grain.id, { text: currentRevision(grain).text, confidence: c })}
+            onChange={(c) => void reviseGrain(grain.id, { text: currentRevision(grain).text, details: currentRevision(grain).details ?? '', confidence: c })}
           />
         </>
       )}

@@ -22,6 +22,7 @@ describe('suggestKind', () => {
     ['I want to always tell my kids the truth', 'value'],
     ['Maybe remote work revives small towns', 'speculation'],
     ['I learned that I argue worse when hungry', 'insight'],
+    ["I've noticed clouds only form when the conditions are right", 'insight'],
     ['Tip: use fmt instead of iostream', 'tip'],
     ['What if the bike rack were also a planter', 'idea'],
     ['Did you know tomatoes stop setting fruit above 90F', 'fact'],

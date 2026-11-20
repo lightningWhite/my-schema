@@ -68,7 +68,7 @@ makes the UI less clear, use the plain word.
 | Field | Notes |
 |---|---|
 | `id` | ULID — time-sortable, generated offline, globally unique without coordination. |
-| `title` | Optional. Short grains don't need one; the UI shows the first line instead. |
+| `title` | Legacy: superseded by the tidbit, which is revisioned (a title wouldn't be). Still read, shown and editable on grains that have one; new grains don't get one. |
 | `kind` | Optional. One of the kinds in §2.4. Users can't add kinds in v1 (keeps filtering meaningful); categories carry the rest. A grain with no kind is fine; the Organize screen nudges you to pick one. |
 | `source` | Optional. Who or where it came from — required in spirit for a `quote` ("Marcus Aurelius, *Meditations*"), useful for a `fact` or `tip`. |
 | `confidence` | Optional. `hunch` · `leaning` · `confident` · `conviction`. Lives on each revision, so you can see confidence change over time. Not shown for kinds where it makes no sense (`question`, `quote`). |
@@ -77,7 +77,7 @@ makes the UI less clear, use the plain word.
 | `tags` | Free-form, cross-cutting. |
 | `links` | Typed links to other grains: `related`, `supports`, `contradicts`, `succeededBy`, `succeeds`. Stored on one side only; the app reads backlinks to show both directions. |
 | `origin` | Set when planted from someone else: `{ schema, grain, revision }`. Null for your own. |
-| `revisions` | Append-only list. Each has `at`, `confidence`, `text`, and an optional `why` (why it changed). |
+| `revisions` | Append-only list. Each has `at`, `confidence`, `text` (the **tidbit**: short, the headline everywhere the grain appears), optional `details` (the longer explanation), and an optional `why` (why it changed). Tidbit and details are revised together. |
 
 ### 2.2 Revise vs. succeed vs. go dormant
 
@@ -135,13 +135,18 @@ has an `— Someone` attribution → `quote`; starts with "I believe/I think" �
 `belief`; and so on). The suggestion is a pre-selected chip the user can
 change or ignore.
 
-### 2.5 Length
+### 2.5 Tidbit and details
 
-Grains are meant to be drops, not essays, but some ideas take a paragraph to
-remember what they meant. So there is **no hard limit**. Past ~500 characters
-the editor shows a quiet hint ("Grains work best short — maybe a title and a
-summary first line?"). The first line is what lists show, so a long grain still
-reads well in the schema.
+A grain is a short **tidbit** — the headline, what lists and reminders show —
+plus optional **details**: the context, the why, the example, whatever you'll
+want to remember about it. Some ideas take a paragraph to recall what they
+meant, so details have **no limit**. The tidbit gets a quiet hint past ~140
+characters ("Tidbits work best short — the rest can go in the details").
+
+At capture, Enter saves the tidbit and Shift+Enter opens the details under it.
+Pasting several lines puts the first in the tidbit and the rest in details.
+Grains written before details existed keep their text as it was; their first
+line serves as the headline.
 
 ### 2.3 File format
 
@@ -163,6 +168,10 @@ origin: null
 <!-- rev at=2027-07-14T03:12:00Z confidence=confident -->
 Water tomatoes deeply twice a week, and every day once it's above 95°F.
 
+<!-- details -->
+Deep means a slow soak to about 8 inches. In a heat wave the plants can't
+pull water fast enough from dry soil, so the extra daily watering matters.
+
 <!-- why -->
 Lost half the crop in the July heat wave on the twice-a-week schedule.
 
@@ -173,12 +182,15 @@ Water tomatoes deeply twice a week instead of a little every day.
 Rules:
 - Revisions are **newest first**, so GitHub's rendered view shows the current
   text at the top.
-- A line beginning `<!-- rev `, `<!-- reaffirmed ` or exactly `<!-- why -->` is
-  reserved. If grain text ever contains one, the writer escapes it by inserting
+- A line beginning `<!-- rev `, `<!-- reaffirmed `, or exactly `<!-- details -->`
+  or `<!-- why -->`, is reserved. If grain text ever contains one, the writer escapes it by inserting
   a backslash after `<!-- ` (`<!-- rev ` → `<!-- \rev `); a line that already
   starts `<!-- \` gets one more backslash, so unescaping is exact.
-- Optional fields (`kind`, `source`, a revision's `confidence`) are omitted
-  when empty.
+- Within a revision the order is: tidbit, then `<!-- details -->` (optional),
+  then `<!-- why -->` (optional).
+- Optional fields (`kind`, `source`, a revision's `confidence` and `details`)
+  are omitted when empty.
+- `formatVersion` 2 added details. Version-1 files read unchanged.
 - Unknown frontmatter fields are **preserved** on rewrite, so newer app versions
   can add fields without older ones destroying them.
 - Every schema has a `manifest.json` manifest with a `formatVersion`. The app

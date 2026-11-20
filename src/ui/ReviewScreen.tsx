@@ -11,7 +11,7 @@ import { dailyReview } from '../core/review';
 import { createdAt, currentRevision, revisions } from '../core/grain';
 import type { Grain } from '../core/types';
 import { longDate, plural, relativeDate } from './format';
-import { Empty, KindBadge, GrainText } from './parts';
+import { Empty, KindBadge, RevisionBody } from './parts';
 import { RetirePanel } from './RetirePanel';
 import { GrainEditor } from './GrainEditor';
 
@@ -64,7 +64,7 @@ function ReviewCard({ grain, grains, now, onReviewed }: { grain: Grain; grains: 
         {cur.confidence && <span className="confidence">{CONFIDENCE_LABEL[cur.confidence]}</span>}
       </div>
       {grain.title && <h2 className="card-title">{grain.title}</h2>}
-      <GrainText text={cur.text} />
+      <RevisionBody rev={cur} />
       {grain.source && <div className="source">— {grain.source}</div>}
       <div className="card-foot muted">
         Written {longDate(createdAt(grain), now)}
@@ -105,10 +105,10 @@ function ReviewCard({ grain, grains, now, onReviewed }: { grain: Grain; grains: 
       {mode === 'revise' && (
         <GrainEditor
           mode="revise"
-          initial={{ text: cur.text, confidence: cur.confidence }}
+          initial={{ text: cur.text, details: cur.details, confidence: cur.confidence }}
           onCancel={() => setMode('view')}
-          onSave={async ({ text, confidence, why }) => {
-            await reviseGrain(grain.id, { text, confidence, why }, true);
+          onSave={async ({ text, details, confidence, why }) => {
+            await reviseGrain(grain.id, { text, details, confidence, why }, true);
             onReviewed();
           }}
         />

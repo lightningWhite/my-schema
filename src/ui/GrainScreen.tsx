@@ -7,7 +7,7 @@ import { CONFIDENCE_LABEL } from '../core/kinds';
 import { connections, currentRevision, displayTitle } from '../core/grain';
 import type { HistoryEntry, Revision, Grain } from '../core/types';
 import { longDate, monthYear, plural } from './format';
-import { CategoryPicker, Icon, KindBadge, KindChips, GrainText, TagsField } from './parts';
+import { CategoryPicker, Icon, KindBadge, KindChips, RevisionBody, TagsField } from './parts';
 import { RetirePanel } from './RetirePanel';
 import { GrainEditor } from './GrainEditor';
 
@@ -73,7 +73,7 @@ export function GrainScreen({ id }: { id: string }) {
 
       <article className="grain-page">
         {grain.title && <h1 className="grain-title">{grain.title}</h1>}
-        <GrainText text={cur.text} />
+        <RevisionBody rev={cur} size="large" />
         {grain.source && <div className="source">— {grain.source}</div>}
         {grain.tags.length > 0 && (
           <div className="tags">
@@ -97,7 +97,7 @@ export function GrainScreen({ id }: { id: string }) {
                 Still true
               </button>
               <button className="button" onClick={() => setMode('meta')}>
-                Edit details
+                Edit labels
               </button>
               <button className="button" onClick={() => setMode('retire')}>
                 Retire
@@ -114,7 +114,7 @@ export function GrainScreen({ id }: { id: string }) {
                 Make active again
               </button>
               <button className="button" onClick={() => setMode('meta')}>
-                Edit details
+                Edit labels
               </button>
             </>
           )}
@@ -130,10 +130,10 @@ export function GrainScreen({ id }: { id: string }) {
           <p className="muted">The current text is kept in the history below.</p>
           <GrainEditor
             mode="revise"
-            initial={{ text: cur.text, confidence: cur.confidence }}
+            initial={{ text: cur.text, details: cur.details, confidence: cur.confidence }}
             onCancel={() => setMode('view')}
-            onSave={async ({ text, confidence, why }) => {
-              await reviseGrain(grain.id, { text, confidence, why });
+            onSave={async ({ text, details, confidence, why }) => {
+              await reviseGrain(grain.id, { text, details, confidence, why });
               setMode('view');
             }}
           />
@@ -206,12 +206,14 @@ function MetaEditor({ grain, grains, onDone }: { grain: Grain; grains: Grain[]; 
   const others = grains.filter((s) => s.id !== grain.id);
   return (
     <div className="panel">
-      <h3>Details</h3>
-      <p className="muted">Details change in place. To change what the grain says, revise it.</p>
-      <label className="field">
-        <span className="field-label">Title</span>
-        <input value={title} onChange={(e) => setTitle(e.target.value)} onBlur={() => void editMeta(grain.id, { title })} placeholder="Optional" />
-      </label>
+      <h3>Labels</h3>
+      <p className="muted">Labels change in place. To change what the grain says, revise it.</p>
+      {grain.title !== undefined && (
+        <label className="field">
+          <span className="field-label">Title (older grains only — clear it to use the tidbit as the headline)</span>
+          <input value={title} onChange={(e) => setTitle(e.target.value)} onBlur={() => void editMeta(grain.id, { title })} />
+        </label>
+      )}
       <div className="field-label">Kind</div>
       <KindChips value={grain.kind} onChange={(k) => void editMeta(grain.id, { kind: k ?? null })} />
       <div className="field-label">Category</div>
@@ -288,7 +290,7 @@ function History({ grain, now }: { grain: Grain; now: string }) {
                 {g.rev.confidence && <span className="confidence">{CONFIDENCE_LABEL[g.rev.confidence]}</span>}
                 {g.isCurrent && <span className="current-label">current</span>}
               </div>
-              {!g.isCurrent && <GrainText text={g.rev.text} />}
+              {!g.isCurrent && <RevisionBody rev={g.rev} size="small" />}
               {g.rev.why && <div className="tl-why">Why it changed: {g.rev.why}</div>}
             </li>
           ),

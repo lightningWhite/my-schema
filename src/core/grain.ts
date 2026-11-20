@@ -7,7 +7,9 @@ import { laterAt, strictlyAfter } from './time';
 import type { Confidence, Ctx, HistoryEntry, Kind, Link, LinkType, Origin, Revision, Grain } from './types';
 
 export interface NewGrain {
+  /** The tidbit. If it has several lines, the first is the tidbit and the rest become details. */
   text: string;
+  details?: string;
   title?: string;
   kind?: Kind;
   category?: string;
@@ -18,10 +20,11 @@ export interface NewGrain {
 }
 
 export function createGrain(ctx: Ctx, input: NewGrain): Grain {
-  const text = cleanText(input.text);
+  const { text, details } = splitTidbit(input.text, input.details);
   if (!text) throw new Error('A grain needs some text');
   const at = ctx.now();
   const revision: Revision = { type: 'revision', at, text };
+  if (details) revision.details = details;
   if (input.confidence) revision.confidence = input.confidence;
   const grain: Grain = {
     id: ctx.newId(),
@@ -72,13 +75,31 @@ export function createdAt(grain: Grain): string {
   return grain.history[grain.history.length - 1]!.at;
 }
 
-/** Soft length hint threshold (docs/design.md §2.5). */
-export const SOFT_LENGTH = 500;
+/** Past this many characters, the tidbit gets a gentle "put the rest in details" hint (docs/design.md §2.5). */
+export const TIDBIT_SOFT_LENGTH = 140;
+
+/**
+ * Normalize a tidbit and its details. When there are no details and the
+ * tidbit spans several lines (pasted, or written before details existed),
+ * the first line is the tidbit and the rest become the details.
+ */
+export function splitTidbit(rawText: string, rawDetails?: string): { text: string; details?: string } {
+  const all = cleanText(rawText);
+  let details = rawDetails === undefined ? undefined : cleanText(rawDetails) || undefined;
+  let text = all;
+  const nl = all.indexOf('\n');
+  if (details === undefined && nl >= 0) {
+    text = all.slice(0, nl).trim();
+    details = cleanText(all.slice(nl + 1)) || undefined;
+  }
+  return details === undefined ? { text } : { text, details };
+}
 
 // ---------------------------------------------------------------- changing
 
 export interface RevisionInput {
   text: string;
+  details?: string;
   confidence?: Confidence;
   why?: string;
 }
@@ -88,12 +109,13 @@ export interface RevisionInput {
  * confidence changed (saving the editor without edits is not a revision).
  */
 export function revise(ctx: Ctx, grain: Grain, input: RevisionInput): Grain {
-  const text = cleanText(input.text);
+  const { text, details } = splitTidbit(input.text, input.details);
   if (!text) throw new Error('A revision needs some text');
   const cur = currentRevision(grain);
-  if (text === cur.text && input.confidence === cur.confidence) return grain;
+  if (text === cur.text && details === cur.details && input.confidence === cur.confidence) return grain;
   const at = nextAt(ctx, grain);
   const rev: Revision = { type: 'revision', at, text };
+  if (details) rev.details = details;
   if (input.confidence) rev.confidence = input.confidence;
   const why = cleanOptional(input.why);
   if (why) rev.why = why;

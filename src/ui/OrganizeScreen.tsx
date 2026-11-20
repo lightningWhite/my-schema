@@ -9,7 +9,7 @@ import { allCategories, recentCategories } from '../core/categories';
 import { createdAt, currentRevision, isUnsorted } from '../core/grain';
 import { cmpAt } from '../core/time';
 import { relativeDate, plural } from './format';
-import { CategoryPicker, Empty, KindChips, GrainText } from './parts';
+import { CategoryPicker, Empty, KindChips, RevisionBody } from './parts';
 
 export function OrganizeScreen() {
   const grains = useGrains();
@@ -59,7 +59,7 @@ export function OrganizeScreen() {
           Captured {relativeDate(createdAt(grain), now)} · <a href={href({ name: 'grain', id: grain.id })}>Open</a>
         </div>
         {grain.title && <h2 className="card-title">{grain.title}</h2>}
-        <GrainText text={currentRevision(grain).text} />
+        <RevisionBody rev={currentRevision(grain)} />
 
         <div className="field-label">Kind</div>
         <KindChips value={grain.kind} onChange={(k) => void editMeta(grain.id, { kind: k ?? null })} />
