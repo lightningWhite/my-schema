@@ -33,14 +33,14 @@ truth for intended design.
 7. **Never write to a bank with a newer `formatVersion`** than the app
    understands. Reading it is fine.
 
-## Layout (planned)
+## Layout
 
 ```
 docs/          Design docs, read first
 src/
   core/        Pure domain logic
   store/       IndexedDB (Dexie): local cache + outbox
-  sync/        GitHub adapter (GraphQL read, Git Data API commits, raw fetch)
+  sync/        (Phase 1) GitHub adapter (GraphQL read, Git Data API commits, raw fetch)
   ui/          React screens
   app/         Wiring, routing, PWA registration
 public/        manifest, icons, service worker
@@ -51,4 +51,6 @@ public/        manifest, icons, service worker
 - TypeScript, `strict` on. React function components.
 - Vitest for tests. Every rule in `core` gets a unit test, and the merge
   function and file format get property tests (fast-check).
-- IDs are ULIDs. Timestamps are ISO 8601 UTC strings.
+- IDs are ULIDs. Timestamps are ISO 8601 UTC strings; compare them with
+  `cmpAt` from `core/time.ts`, never as strings.
+- `npm test` and `npm run build` (which typechecks) must pass before committing.

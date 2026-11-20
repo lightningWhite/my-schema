@@ -19,5 +19,18 @@ to where each one came from.
 - **Works offline.** Everything is stored on your device and syncs when you're
   online.
 
-> **Status: design.** Nothing is built yet. Start with
-> [`docs/design.md`](docs/design.md).
+> **Status: Phase 0 (local).** Capture, sort, review, revise / retire /
+> succeed, history, search and export/import all work on one device. GitHub
+> sync and sharing come next. The design is in [`docs/design.md`](docs/design.md).
+
+## Development
+
+```sh
+npm install
+npm run dev      # app at http://localhost:5173
+npm test         # core unit + property tests
+npm run build    # static site in dist/
+```
+
+Pushing to `main` runs the tests and deploys to GitHub Pages (set
+**Settings → Pages → Source** to **GitHub Actions** once).
