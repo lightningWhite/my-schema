@@ -13,6 +13,7 @@ export const KIND_INFO: Record<Kind, KindInfo> = {
   insight: { label: 'Insight', hint: 'Something you realized, noticed or learned', hasConfidence: true },
   belief: { label: 'Belief', hint: 'How you think the world works', hasConfidence: true },
   value: { label: 'Value', hint: 'Something you live by', hasConfidence: true },
+  practice: { label: 'Practice', hint: 'Something you do, or mean to do, because it helps', hasConfidence: true },
   fact: { label: 'Fact', hint: 'Checked, true and worth remembering', hasConfidence: true },
   tip: { label: 'Tip', hint: 'Practical know-how', hasConfidence: true },
   speculation: { label: 'Speculation', hint: 'A hunch about how things are or will be', hasConfidence: true },
@@ -32,8 +33,15 @@ const ATTRIBUTION = /(?:^|\n|\s)(?:—|–|--|-)\s*[A-Z][^\n]{1,80}$/;
 
 const STARTS: Array<[RegExp, Kind]> = [
   [/^(i|we) (believe|think)\b/, 'belief'],
-  [/^(always|never)\b/, 'value'],
   [/^i (want to|will|try to) (always|never)\b/, 'value'],
+  // Practices: habits and personal rules ("I try to…", "Every morning…", "No phone after…").
+  [/^i (try to|make sure|always|never|don'?t|do not|aim to|stick to)\b/, 'practice'],
+  [/^(every|each) (day|morning|night|evening|week|weekday|weekend)\b/, 'practice'],
+  [/^(no|limit) (phone|phones|screens?|social media|caffeine|coffee|alcohol|sugar|email|news)\b/, 'practice'],
+  [/^(in bed by|wake up at|get up at|go to bed)\b/, 'practice'],
+  [/^(always|never)\b/, 'value'],
+  // General "don't" advice is know-how for anyone.
+  [/^(don'?t|do not|avoid)\b/, 'tip'],
   [/^(i|we) (value|stand for)\b/, 'value'],
   [/^(maybe|perhaps|i (bet|suspect|wonder if|guess))\b/, 'speculation'],
   [/^(i (learned|realized|noticed)|turns out|lesson:)/, 'insight'],

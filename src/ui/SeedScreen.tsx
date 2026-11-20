@@ -1,17 +1,17 @@
 /** One seed: current text, metadata, actions and its full history. */
 import { useState } from 'react';
-import { deleteSeed, editMeta, reactivateSeed, reaffirmSeed, reviseSeed } from '../app/actions';
+import { deleteSeed, editMeta, reactivateSeed, reaffirmSeed, reviseSeed, spinOffSeed } from '../app/actions';
 import { href, navigate, useNow, useSeeds } from '../app/hooks';
 import { allCategories, recentCategories } from '../core/categories';
 import { CONFIDENCE_LABEL } from '../core/kinds';
-import { currentRevision, displayTitle } from '../core/seed';
+import { connections, currentRevision, displayTitle } from '../core/seed';
 import type { HistoryEntry, Revision, Seed } from '../core/types';
 import { longDate, monthYear, plural } from './format';
 import { CategoryPicker, Icon, KindBadge, KindChips, SeedText, TagsField } from './parts';
 import { RetirePanel } from './RetirePanel';
 import { SeedEditor } from './SeedEditor';
 
-type Mode = 'view' | 'revise' | 'meta' | 'retire' | 'delete';
+type Mode = 'view' | 'revise' | 'meta' | 'retire' | 'delete' | 'practice';
 
 export function SeedScreen({ id }: { id: string }) {
   const seeds = useSeeds();
@@ -102,6 +102,11 @@ export function SeedScreen({ id }: { id: string }) {
               <button className="button" onClick={() => setMode('retire')}>
                 Retire
               </button>
+              {seed.kind !== 'practice' && (
+                <button className="button" onClick={() => setMode('practice')} title="Start a habit or personal rule that grows out of this">
+                  Make it a practice
+                </button>
+              )}
             </>
           ) : (
             <>
@@ -130,6 +135,25 @@ export function SeedScreen({ id }: { id: string }) {
             onSave={async ({ text, confidence, why }) => {
               await reviseSeed(seed.id, { text, confidence, why });
               setMode('view');
+            }}
+          />
+        </div>
+      )}
+      {mode === 'practice' && (
+        <div className="panel">
+          <h3>Make it a practice</h3>
+          <p className="muted">What will you do because of this? Both seeds stay, linked to each other.</p>
+          <SeedEditor
+            mode="new"
+            initial={{ text: '', kind: 'practice', category: seed.category, tags: seed.tags }}
+            categories={allCategories(seeds)}
+            recentCategories={recentCategories(seeds)}
+            saveLabel="Save practice"
+            onCancel={() => setMode('view')}
+            onSave={async (input) => {
+              const child = await spinOffSeed(seed.id, input);
+              setMode('view');
+              navigate({ name: 'seed', id: child.id });
             }}
           />
         </div>
@@ -170,6 +194,7 @@ export function SeedScreen({ id }: { id: string }) {
         </div>
       )}
 
+      <Connections seed={seed} seeds={seeds} />
       <History seed={seed} now={now} />
     </div>
   );
@@ -269,6 +294,24 @@ function History({ seed, now }: { seed: Seed; now: string }) {
           ),
         )}
       </ol>
+    </section>
+  );
+}
+
+/** Seeds linked to this one, either direction. Replacements are shown in the banners above instead. */
+function Connections({ seed, seeds }: { seed: Seed; seeds: Seed[] }) {
+  const list = connections(seed, seeds).filter((c) => c.label !== 'Replaces' && c.label !== 'Replaced by');
+  if (!list.length) return null;
+  return (
+    <section className="connections" aria-label="Connected seeds">
+      <h2>Connected</h2>
+      {list.map((c) => (
+        <a key={c.label + c.seed.id} className="connection" href={href({ name: 'seed', id: c.seed.id })}>
+          <span className="connection-label">{c.label}</span>
+          <span className="connection-title">{displayTitle(c.seed)}</span>
+          <KindBadge kind={c.seed.kind} />
+        </a>
+      ))}
     </section>
   );
 }

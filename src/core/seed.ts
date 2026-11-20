@@ -169,6 +169,61 @@ export function succeed(ctx: Ctx, old: Seed, input: NewSeed, why?: string): { ol
   return { old: retiredOld, successor };
 }
 
+/**
+ * Start a new seed that grows out of an existing one — e.g. turning the
+ * insight "I'm happier on 8 hours of sleep" into the practice "In bed by
+ * 10:30". The source keeps a `supports` link to the new seed; the new seed
+ * shows it as "supported by" through backlinks. Unlike succeed, the source
+ * stays active: both ideas stand.
+ */
+export function spinOff(ctx: Ctx, source: Seed, input: NewSeed, type: LinkType = 'supports'): { source: Seed; child: Seed } {
+  const child = createSeed(ctx, { category: source.category, tags: source.tags, ...input });
+  return { source: addLink(ctx, source, type, child.id), child };
+}
+
+export interface Connection {
+  /** Phrase describing how `seed` relates to the one being viewed. */
+  label: string;
+  seed: Seed;
+}
+
+const OUTGOING: Record<LinkType, string> = {
+  related: 'Related',
+  supports: 'Supports',
+  contradicts: 'Contradicts',
+  succeededBy: 'Replaced by',
+  succeeds: 'Replaces',
+};
+const INCOMING: Record<LinkType, string> = {
+  related: 'Related',
+  supports: 'Supported by',
+  contradicts: 'Contradicted by',
+  succeededBy: 'Replaces',
+  succeeds: 'Replaced by',
+};
+
+/**
+ * Every seed connected to `seed`, from its own links and from links other
+ * seeds hold to it. Links are stored once, on one side; this reads both.
+ */
+export function connections(seed: Seed, all: Seed[]): Connection[] {
+  const byId = new Map(all.map((s) => [s.id, s]));
+  const out: Connection[] = [];
+  const seen = new Set<string>();
+  const push = (label: string, s: Seed | undefined) => {
+    if (!s || s.id === seed.id) return;
+    const key = `${label}:${s.id}`;
+    if (seen.has(key)) return;
+    seen.add(key);
+    out.push({ label, seed: s });
+  };
+  for (const l of seed.links) push(OUTGOING[l.type], byId.get(l.seed));
+  for (const other of all) {
+    for (const l of other.links) if (l.seed === seed.id) push(INCOMING[l.type], other);
+  }
+  return out;
+}
+
 export function addLink(ctx: Ctx, seed: Seed, type: LinkType, target: string): Seed {
   if (target === seed.id || seed.links.some((l) => l.type === type && l.seed === target)) return seed;
   return { ...seed, links: [...seed.links, { type, seed: target }], updated: nextUpdated(ctx, seed) };

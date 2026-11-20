@@ -63,7 +63,7 @@ less clear, use the plain word.
 | `status` | `active` · `dormant` · `succeeded`. |
 | `category` | One path in a tree, e.g. `Parenting/Discipline`, `Engineering/C++`. Created on the fly. |
 | `tags` | Free-form, cross-cutting. |
-| `links` | Typed links to other seeds: `related`, `supports`, `contradicts`, `succeededBy`, `succeeds`. |
+| `links` | Typed links to other seeds: `related`, `supports`, `contradicts`, `succeededBy`, `succeeds`. Stored on one side only; the app reads backlinks to show both directions. |
 | `origin` | Set when planted from someone else: `{ bank, seed, revision }`. Null for your own. |
 | `revisions` | Append-only list. Each has `at`, `confidence`, `text`, and an optional `why` (why it changed). |
 
@@ -84,7 +84,7 @@ then, Git keeps it — see §3.6).
 
 ### 2.4 Kinds
 
-Nine kinds. Each answers a different question about the seed, so a filter by
+Ten kinds. Each answers a different question about the seed, so a filter by
 kind means something:
 
 | Kind | What it is | Example |
@@ -93,6 +93,7 @@ kind means something:
 | `insight` | Something you realized or learned — including lessons learned the hard way, and things you noticed. | "I argue worse when I'm hungry." |
 | `belief` | Something you hold to be true about how the world works. | "Most people are doing the best they can." |
 | `value` | Something you live by; a standard for your own choices. | "Leave every place better than I found it." |
+| `practice` | Something you do, or mean to do, because it helps — a habit or personal rule. | "In bed by 10:30 on weeknights." |
 | `fact` | Something checked and true, worth remembering. | "Tomatoes stop setting fruit above ~90°F." |
 | `tip` | Practical know-how; how to do something well. | "Use `fmt` over `iostream` for formatting in C++." |
 | `speculation` | A hunch about how things are or will turn out. | "Remote work will make small towns grow again." |
@@ -101,7 +102,20 @@ kind means something:
 
 Changes from the first draft: `observation` and `lesson` fold into `insight`
 (the line between them was hard to draw at capture time); `knowhow` became
-`tip`; `idea`, `fact`, `question` and `quote` are new.
+`tip`; `idea`, `fact`, `practice`, `question` and `quote` are new.
+
+**Where common seeds go.** A lesson learned is an `insight`. "Don't…" is not a
+kind of its own: general advice for anyone is a `tip` ("Don't water in the
+midday sun"), a rule for yourself is a `practice` ("No phone in the
+bedroom"), and a line you won't cross on principle is a `value`.
+
+**Practices** often grow out of an insight: "I'm happier on 8 hours of sleep"
+(insight) → "In bed by 10:30" (practice). The seed page has **Make it a
+practice**, which creates the practice with a `supports` link from the
+insight, so each shows the other. A practice is reviewed like any seed —
+"Still true" means you still believe it helps you, *not* that you kept it up.
+Seedbank is not a habit tracker; falling short of a practice you believe in is
+normal and isn't recorded as failure.
 
 Capture should never stop to ask for a kind. The app **suggests** one from the
 text (a pure function in core: ends with `?` → `question`; wrapped in quotes or
@@ -448,7 +462,8 @@ Settled questions, kept here so the reasoning isn't lost.
 3. **Reaffirmations as history.** Yes — written into the seed file and shown
    in the history view (§4.1).
 4. **Seed size.** Soft limit only: a hint past ~500 characters, no cap (§2.5).
-5. **Kinds.** Nine kinds, suggested automatically at capture (§2.4).
+5. **Kinds.** Ten kinds, suggested automatically at capture (§2.4). Practices
+   are reviewed for belief, not adherence — no "did you do it?" tracking.
 
 ## 9. Open questions
 

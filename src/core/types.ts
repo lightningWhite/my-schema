@@ -10,6 +10,7 @@ export const KINDS = [
   'insight',
   'belief',
   'value',
+  'practice',
   'fact',
   'tip',
   'speculation',

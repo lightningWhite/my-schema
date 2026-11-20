@@ -43,7 +43,7 @@ const KIND_FACTOR: Partial<Record<Kind, number>> = {
 };
 
 /** Longest gap for kinds that should never drift away. */
-const SETTLED_KINDS: Kind[] = ['value', 'belief'];
+const SETTLED_KINDS: Kind[] = ['value', 'belief', 'practice'];
 const SETTLED_MAX = 90;
 const MAX_INTERVAL = 365;
 

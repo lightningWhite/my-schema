@@ -11,6 +11,8 @@ import {
   reactivate,
   reaffirm,
   removeLink,
+  connections,
+  spinOff,
   revise,
   succeed,
   updateMeta,
@@ -171,5 +173,33 @@ describe('normalizers', () => {
   });
   it('tags', () => {
     expect(normalizeTags(['A B', '#a-b', '', '##x'])).toEqual(['a-b', 'x']);
+  });
+});
+
+describe('spinOff', () => {
+  it('turns an insight into a linked practice, leaving the insight active', () => {
+    const ctx = testCtx();
+    const insight = createSeed(ctx, { text: "I'm happier on 8 hours of sleep", kind: 'insight', category: 'Health', tags: ['sleep'] });
+    ctx.advance(1000);
+    const { source, child } = spinOff(ctx, insight, { text: 'In bed by 10:30 on weeknights', kind: 'practice' });
+    expect(source.status).toBe('active');
+    expect(source.links).toEqual([{ type: 'supports', seed: child.id }]);
+    expect(source.history).toEqual(insight.history);
+    expect(child).toMatchObject({ kind: 'practice', category: 'Health', tags: ['sleep'], links: [] });
+  });
+});
+
+describe('connections', () => {
+  it('reads links from both sides, with a label for each direction', () => {
+    const ctx = testCtx();
+    const insight = createSeed(ctx, { text: 'insight' });
+    const { source, child } = spinOff(ctx, insight, { text: 'practice' });
+    const other = addLink(ctx, createSeed(ctx, { text: 'other' }), 'contradicts', child.id);
+    const all = [source, child, other];
+    expect(connections(source, all).map((c) => [c.label, c.seed.id])).toEqual([['Supports', child.id]]);
+    expect(connections(child, all).map((c) => [c.label, c.seed.id])).toEqual([
+      ['Supported by', source.id],
+      ['Contradicted by', other.id],
+    ]);
   });
 });

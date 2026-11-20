@@ -13,6 +13,7 @@ import {
   reactivate,
   reaffirm,
   revise,
+  spinOff,
   succeed,
   updateMeta,
   type MetaPatch,
@@ -89,6 +90,13 @@ export async function succeedSeed(id: string, input: NewSeed, why?: string): Pro
   const { old, successor } = succeed(ctx, await load(id), input, why);
   await withReview(old, 'retired', () => db.seeds.bulkPut([old, successor]));
   return successor;
+}
+
+/** Start a new seed that grows out of this one (e.g. an insight → a practice), linked to it. */
+export async function spinOffSeed(id: string, input: NewSeed): Promise<Seed> {
+  const { source, child } = spinOff(ctx, await load(id), input);
+  await db.seeds.bulkPut([source, child]);
+  return child;
 }
 
 /**

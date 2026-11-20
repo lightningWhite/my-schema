@@ -993,3 +993,37 @@ kbd {
   border-radius: 10px;
   font-size: 0.9rem;
 }
+
+.kind-practice {
+  background: #dcefec;
+  color: #2b6158;
+}
+
+.connections {
+  margin-top: 28px;
+}
+.connections h2 {
+  margin-bottom: 8px;
+}
+.connection {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  padding: 10px 4px;
+  border-bottom: 1px solid var(--line);
+  color: inherit;
+}
+.connection:hover {
+  text-decoration: none;
+  background: color-mix(in srgb, var(--surface-2) 50%, transparent);
+}
+.connection-label {
+  flex: none;
+  font-size: 0.8rem;
+  color: var(--ink-3);
+  min-width: 92px;
+}
+.connection-title {
+  flex: 1;
+  min-width: 0;
+}
