@@ -85,3 +85,11 @@ describe('dailyReview', () => {
     expect(dailyReview([a, b], {}, '2027-01-01T00:00:00.000Z', { focus: 'Parenting' })).toEqual([a]);
   });
 });
+
+describe('drafts', () => {
+  it('are not reviewed until they are finished', () => {
+    const c = testCtx('2026-01-01T00:00:00.000Z');
+    const d = createGrain(c, { text: 'draft', draft: true, confidence: 'hunch' });
+    expect(dailyReview([d], {}, '2027-01-01T00:00:00.000Z')).toEqual([]);
+  });
+});

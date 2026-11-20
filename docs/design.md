@@ -72,7 +72,7 @@ makes the UI less clear, use the plain word.
 | `kind` | Optional. One of the kinds in §2.4. Users can't add kinds in v1 (keeps filtering meaningful); categories carry the rest. A grain with no kind is fine; the Organize screen nudges you to pick one. |
 | `source` | Optional. Who or where it came from — required in spirit for a `quote` ("Marcus Aurelius, *Meditations*"), useful for a `fact` or `tip`. |
 | `confidence` | Optional. `hunch` · `leaning` · `confident` · `conviction`. Lives on each revision, so you can see confidence change over time. Not shown for kinds where it makes no sense (`question`, `quote`). |
-| `status` | `active` · `dormant` · `succeeded`. |
+| `status` | `draft` · `active` · `dormant` · `succeeded`. Quick captures start as **drafts**: kept out of Review and the passing strip until marked done in Organize. The full editor saves straight to `active`. |
 | `category` | One path in a tree, e.g. `Parenting/Discipline`, `Engineering/C++`. Created on the fly. |
 | `tags` | Free-form, cross-cutting. |
 | `links` | Typed links to other grains: `related`, `supports`, `contradicts`, `succeededBy`, `succeeds`. Stored on one side only; the app reads backlinks to show both directions. |
@@ -332,7 +332,18 @@ Water tomatoes deeply twice a week, and every day once it's above 95°F.
 ```
 
 Reaffirmations are append-only like revisions, merge by union, and travel with
-the grain when it's published with full history. Several reaffirmations in a
+the grain when it's published with full history.
+
+**Kind changes are history too.** Noticing something (insight) and later
+learning it's a fact is a change in what the grain *is*, so moving from one
+kind to another writes a marker, shown in the timeline as "Insight → Fact":
+
+```markdown
+<!-- kind at=2028-05-01T09:00:00Z from=insight to=fact -->
+```
+
+Choosing a first kind, or relabeling a draft, is just filing and isn't
+recorded. Category, tags and source are labels and change in place. Several reaffirmations in a
 row collapse in the history view ("reaffirmed 4 times, last Mar 2029").
 
 ### 4.2 Reminders
@@ -468,13 +479,13 @@ each with a count badge where it helps:
 | Tab | What it's for |
 |---|---|
 | **Capture** | The home input above. |
-| **Organize** | The Unsorted inbox: grains with no category (or no kind). One at a time, with the same quick chips. Swipe through them in a minute. |
+| **Organize** | Drafts, one at a time, oldest first: tidy the wording or add details, set kind, category and confidence, then **Done** (or **Skip**, or **Discard**). Grains without a category are a filter in the Schema tab. |
 | **Review** | Today's handful of grains (§4): Still true · Revise · Retire · Skip. |
 | **Schema** | Everything you have: category tree, filters by kind/status/tag, search. Opens a grain's page with its full history. |
 | **Explore** | (Phase 2) Other people's public schemas; plant grains into yours. |
 | **Settings** | Style, export/import, GitHub setup (Phase 1), review size. |
 
-An **About** page, linked under the tagline on the home screen and from
+An **About** page, linked under the capture box on the home screen and from
 Settings, explains the idea in plain words: why, what a schema is, how the
 loop works, the kinds, and where your data lives.
 

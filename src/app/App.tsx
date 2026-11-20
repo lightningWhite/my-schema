@@ -1,6 +1,6 @@
 import { useEffect } from 'react';
 import { dueCount } from '../core/review';
-import { isUnsorted } from '../core/grain';
+import { isDraft } from '../core/grain';
 import { SchemaScreen } from '../ui/SchemaScreen';
 import { CaptureScreen } from '../ui/CaptureScreen';
 import { Icon, Logo, type IconName } from '../ui/parts';
@@ -30,7 +30,7 @@ export function App() {
 
   const badges: Partial<Record<Route['name'], number>> = {};
   if (grains && review) {
-    badges.organize = grains.filter((s) => s.status === 'active' && isUnsorted(s)).length;
+    badges.organize = grains.filter(isDraft).length;
     badges.review = dueCount(grains, review, now, { size: settings.reviewSize, focus: settings.reviewFocus });
   }
   // App icon badge where supported (installed PWAs).

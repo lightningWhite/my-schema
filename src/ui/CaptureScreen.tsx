@@ -6,7 +6,7 @@
  * become a revision instead.
  */
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { capture, editMeta, reviseGrain } from '../app/actions';
+import { capture, editMeta, finishGrain, reviseGrain } from '../app/actions';
 import { href, useGrains, useNow } from '../app/hooks';
 import { allCategories, recentCategories } from '../core/categories';
 import { KIND_INFO, suggestKind } from '../core/kinds';
@@ -57,7 +57,8 @@ export function CaptureScreen() {
     const t = text.trim();
     if (!t) return;
     const kind = suggestKind(t);
-    const grain = await capture({ text: t, details, kind });
+    // Quick captures are drafts until looked over in Organize.
+    const grain = await capture({ text: t, details, kind, draft: true });
     setText('');
     setDetails('');
     setShowDetails(false);
@@ -100,9 +101,7 @@ export function CaptureScreen() {
           <Logo size={34} />
           <span>Schema</span>
         </div>
-        <p className="tagline">
-          Turn passing tidbits into guideposts. <a href={href({ name: 'about' })}>About</a>
-        </p>
+        <p className="tagline">Turn passing tidbits into guideposts.</p>
 
         <form
           className={`capture-box${showDetails ? ' with-details' : ''}`}
@@ -189,6 +188,9 @@ export function CaptureScreen() {
             </span>
           )}
         </div>
+        <a className="about-link" href={href({ name: 'about' })}>
+          About Schema
+        </a>
 
         {saved && <SavedCard grain={saved} grains={grains} onDone={() => setJustSaved(null)} />}
 
@@ -217,10 +219,15 @@ function SavedCard({ grain, grains, onDone }: { grain: Grain; grains: Grain[]; o
         <span className="saved-check">
           <Icon name="check" size={16} />
         </span>
-        <span className="saved-title">Saved{grain.category ? '' : ' to Unsorted'}</span>
+        <span className="saved-title">{grain.status === 'draft' ? 'Saved as a draft' : 'Saved'}</span>
         <a className="link" href={href({ name: 'grain', id: grain.id })}>
           Open
         </a>
+        {grain.status === 'draft' && (
+          <button className="button small" onClick={() => void finishGrain(grain.id)} title="It's ready as it is — skip Organize">
+            Done
+          </button>
+        )}
         <button className="icon-button subtle small" onClick={onDone} aria-label="Dismiss">
           <Icon name="close" size={16} />
         </button>

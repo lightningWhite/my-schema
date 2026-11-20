@@ -1440,3 +1440,79 @@ kbd {
   text-align: center;
   margin: 36px 0 12px;
 }
+
+.about-link {
+  display: block;
+  width: fit-content;
+  margin: 6px auto 0;
+  font-size: 0.85rem;
+  color: var(--ink-3);
+}
+.about-link:hover {
+  color: var(--accent);
+}
+
+.small-link {
+  font-size: 0.85rem;
+  margin-top: 8px;
+  display: inline-block;
+}
+.card-actions.spread {
+  justify-content: flex-start;
+  align-items: center;
+}
+.card-actions .spacer {
+  flex: 1;
+}
+.discard-confirm {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-top: 18px;
+  padding: 10px 12px;
+  border: 1px solid var(--danger);
+  border-radius: var(--r-card);
+  font-size: 0.9rem;
+}
+.discard-confirm span {
+  flex: 1 1 200px;
+}
+
+.kind-button {
+  border: none;
+  background: none;
+  padding: 0;
+  cursor: pointer;
+  display: inline-flex;
+}
+.kind-button:hover .kind-badge {
+  outline: 2px solid var(--accent-soft);
+}
+.kind-badge.empty {
+  background: transparent;
+  border: 1px dashed var(--line);
+  color: var(--ink-3);
+}
+.kind-picker {
+  margin: -8px 0 16px;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-card);
+  background: var(--surface);
+}
+.kind-picker p {
+  margin: 8px 0 0;
+}
+.draft-banner {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  justify-content: space-between;
+  background: var(--accent-soft);
+}
+.tl-kind {
+  font-size: 0.85rem;
+  color: var(--ink-2);
+  font-family: var(--meta-font);
+}

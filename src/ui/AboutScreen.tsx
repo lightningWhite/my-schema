@@ -44,11 +44,14 @@ export function AboutScreen() {
         <dl className="about-steps">
           <dt>Capture</dt>
           <dd>
-            Type a tidbit and press Enter. That's all it takes; file it now or later. Need more room? Shift+Enter adds details under it — the
-            context, the why, the example. Each one becomes a grain, as in a grain of truth.
+            Type a tidbit and press Enter. That's all it takes. Need more room? Shift+Enter adds details under it — the context, the why, the
+            example. Each one becomes a grain, as in a grain of truth, and starts as a draft.
           </dd>
           <dt>Organize</dt>
-          <dd>Give unfiled grains a category and a kind, one at a time, whenever you have a minute.</dd>
+          <dd>
+            When you have a minute, look over your drafts one at a time: tidy the wording, give it a kind and a category, and mark it done. Or
+            discard it — not every passing thought needs keeping.
+          </dd>
           <dt>Review</dt>
           <dd>
             A few grains come back each day. Mark them <strong>Still true</strong>, <strong>revise</strong> them, or <strong>retire</strong> them.
@@ -65,7 +68,8 @@ export function AboutScreen() {
         <h2>Grains change</h2>
         <p>
           Nothing is overwritten. <strong>Revise</strong> a grain when you see the same idea more sharply; the old wording stays in its history,
-          with a note on why it changed. <strong>Retire</strong> it when you've outgrown it — it goes dormant, or a new idea succeeds it — and
+          with a note on why it changed. If it turns out to be a different kind of thing — you noticed something, then learned it's a fact —
+          change its kind, and that's noted too. <strong>Retire</strong> it when you've outgrown it — it goes dormant, or a new idea succeeds it — and
           it stays in your schema as a record of what you used to think. Over time, how your thinking changed becomes part of the story.
         </p>
       </section>

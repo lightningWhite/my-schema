@@ -22,7 +22,8 @@ export type Kind = (typeof KINDS)[number];
 export const CONFIDENCES = ['hunch', 'leaning', 'confident', 'conviction'] as const;
 export type Confidence = (typeof CONFIDENCES)[number];
 
-export const STATUSES = ['active', 'dormant', 'succeeded'] as const;
+/** `draft`: captured quickly, not yet looked over. Becomes `active` when marked done. */
+export const STATUSES = ['draft', 'active', 'dormant', 'succeeded'] as const;
 export type Status = (typeof STATUSES)[number];
 
 export const LINK_TYPES = ['related', 'supports', 'contradicts', 'succeededBy', 'succeeds'] as const;
@@ -63,7 +64,15 @@ export interface Reaffirmation {
   at: string;
 }
 
-export type HistoryEntry = Revision | Reaffirmation;
+/** The grain was relabeled from one kind to another, e.g. insight → fact. */
+export interface KindChange {
+  type: 'kindChange';
+  at: string;
+  from: Kind;
+  to: Kind;
+}
+
+export type HistoryEntry = Revision | Reaffirmation | KindChange;
 
 export interface Grain {
   id: string;

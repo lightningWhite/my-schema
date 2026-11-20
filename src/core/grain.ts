@@ -7,6 +7,8 @@ import { laterAt, strictlyAfter } from './time';
 import type { Confidence, Ctx, HistoryEntry, Kind, Link, LinkType, Origin, Revision, Grain } from './types';
 
 export interface NewGrain {
+  /** Save as a draft (quick capture) rather than active. */
+  draft?: boolean;
   /** The tidbit. If it has several lines, the first is the tidbit and the rest become details. */
   text: string;
   details?: string;
@@ -28,7 +30,7 @@ export function createGrain(ctx: Ctx, input: NewGrain): Grain {
   if (input.confidence) revision.confidence = input.confidence;
   const grain: Grain = {
     id: ctx.newId(),
-    status: 'active',
+    status: input.draft ? 'draft' : 'active',
     tags: normalizeTags(input.tags ?? []),
     links: [],
     origin: input.origin ?? null,
@@ -145,12 +147,32 @@ export function updateMeta(ctx: Ctx, grain: Grain, patch: MetaPatch): Grain {
   const next: Grain = { ...grain };
   if (patch.title !== undefined) setOrClear(next, 'title', cleanOptional(patch.title ?? undefined));
   if (patch.kind !== undefined) setOrClear(next, 'kind', patch.kind ?? undefined);
+  // Moving from one kind to another is part of how a grain's meaning changed
+  // ("I noticed it" → "I learned it's a fact"), so it goes in the history.
+  // Choosing a first kind, or relabeling a draft, is just filing.
+  const kindChanged = grain.status !== 'draft' && grain.kind && next.kind && grain.kind !== next.kind;
   if (patch.category !== undefined) setOrClear(next, 'category', normalizeCategory(patch.category ?? undefined));
   if (patch.source !== undefined) setOrClear(next, 'source', cleanOptional(patch.source ?? undefined));
   if (patch.tags !== undefined) next.tags = normalizeTags(patch.tags);
   if (sameMeta(grain, next)) return grain;
-  next.updated = nextUpdated(ctx, grain);
+  if (kindChanged) {
+    const at = nextAt(ctx, grain);
+    next.history = [{ type: 'kindChange', at, from: grain.kind!, to: next.kind! }, ...grain.history];
+    next.updated = at;
+  } else {
+    next.updated = nextUpdated(ctx, grain);
+  }
   return next;
+}
+
+/** Mark a draft done: it joins the schema proper (reviews, reminders). */
+export function finishDraft(ctx: Ctx, grain: Grain): Grain {
+  if (grain.status !== 'draft') return grain;
+  return { ...grain, status: 'active', updated: nextUpdated(ctx, grain) };
+}
+
+export function isDraft(grain: Grain): boolean {
+  return grain.status === 'draft';
 }
 
 /** Retire a grain with nothing replacing it. */

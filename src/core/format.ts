@@ -58,7 +58,7 @@ const KNOWN_KEYS = [
  * inserts a backslash after `<!-- `; `<!-- \` is itself in the list so that
  * unescaping (remove one backslash) is exact.
  */
-const ESCAPE_PREFIXES = ['<!-- rev ', '<!-- reaffirmed ', '<!-- why', '<!-- details', '<!-- \\'];
+const ESCAPE_PREFIXES = ['<!-- rev ', '<!-- reaffirmed ', '<!-- kind ', '<!-- why', '<!-- details', '<!-- \\'];
 
 export function escapeText(text: string): string {
   return text
@@ -100,6 +100,8 @@ export function serializeGrain(grain: Grain): string {
   for (const entry of grain.history) {
     if (entry.type === 'reaffirmation') {
       out += `<!-- reaffirmed at=${entry.at} -->\n\n`;
+    } else if (entry.type === 'kindChange') {
+      out += `<!-- kind at=${entry.at} from=${entry.from} to=${entry.to} -->\n\n`;
     } else {
       const conf = entry.confidence ? ` confidence=${entry.confidence}` : '';
       out += `<!-- rev at=${entry.at}${conf} -->\n${escapeText(entry.text)}\n\n`;
@@ -114,11 +116,18 @@ export function serializeGrain(grain: Grain): string {
 
 const REV_RE = /^<!-- rev at=(\S+)(?: confidence=(\S+))? -->$/;
 const REAFFIRM_RE = /^<!-- reaffirmed at=(\S+) -->$/;
+const KIND_RE = /^<!-- kind at=(\S+) from=(\S+) to=(\S+) -->$/;
 const WHY_LINE = '<!-- why -->';
 const DETAILS_LINE = '<!-- details -->';
 
 function isMarker(line: string): boolean {
-  return line.startsWith('<!-- rev ') || line.startsWith('<!-- reaffirmed ') || line === WHY_LINE || line === DETAILS_LINE;
+  return (
+    line.startsWith('<!-- rev ') ||
+    line.startsWith('<!-- reaffirmed ') ||
+    line.startsWith('<!-- kind ') ||
+    line === WHY_LINE ||
+    line === DETAILS_LINE
+  );
 }
 
 /** Block content ends with the blank line the writer adds; tolerate hand edits. */
@@ -156,8 +165,16 @@ export function parseGrain(file: string): Grain {
 
     const reaffirm = REAFFIRM_RE.exec(marker);
     const rev = REV_RE.exec(marker);
+    const kind = KIND_RE.exec(marker);
     if (reaffirm) {
       history.push({ type: 'reaffirmation', at: reaffirm[1]! });
+    } else if (kind) {
+      history.push({
+        type: 'kindChange',
+        at: kind[1]!,
+        from: oneOf(kind[2], KINDS, 'kind') as Kind,
+        to: oneOf(kind[3], KINDS, 'kind') as Kind,
+      });
     } else if (rev) {
       const confidence = rev[2];
       if (confidence !== undefined && !(CONFIDENCES as readonly string[]).includes(confidence)) {

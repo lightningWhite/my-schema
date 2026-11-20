@@ -14,5 +14,8 @@ createRoot(document.getElementById('root')!).render(
 if (import.meta.env.PROD && 'serviceWorker' in navigator) {
   window.addEventListener('load', () => {
     void navigator.serviceWorker.register('./sw.js');
+    // Warm the cache with the export/import code, so it works offline even
+    // if it has never been used. Off the startup path.
+    setTimeout(() => void import('fflate'), 3000);
   });
 }

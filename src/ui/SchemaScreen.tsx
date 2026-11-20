@@ -10,7 +10,7 @@ import { KINDS, type Kind, type Grain } from '../core/types';
 import { plural } from './format';
 import { Chip, Empty, GrainRow } from './parts';
 
-type StatusFilter = 'active' | 'retired' | 'all';
+type StatusFilter = 'current' | 'drafts' | 'retired' | 'all';
 const UNSORTED = '\u0000unsorted';
 
 export function SchemaScreen({ category, query }: { category?: string; query?: string }) {
@@ -18,15 +18,16 @@ export function SchemaScreen({ category, query }: { category?: string; query?: s
   const now = useNow();
   const [q, setQ] = useState(query ?? '');
   const [kind, setKind] = useState<Kind | undefined>();
-  const [status, setStatus] = useState<StatusFilter>('active');
+  const [status, setStatus] = useState<StatusFilter>('current');
 
   const setCategory = (c: string | undefined) => navigate({ name: 'schema', category: c, query: q || undefined }, true);
 
   const tree = useMemo(() => categoryTree(grains ?? []), [grains]);
   const list = useMemo(() => {
     let out: Grain[] = grains ?? [];
-    if (status === 'active') out = out.filter((s) => s.status === 'active');
-    else if (status === 'retired') out = out.filter((s) => s.status !== 'active');
+    if (status === 'current') out = out.filter((s) => s.status === 'active' || s.status === 'draft');
+    else if (status === 'drafts') out = out.filter((s) => s.status === 'draft');
+    else if (status === 'retired') out = out.filter((s) => s.status === 'dormant' || s.status === 'succeeded');
     if (kind) out = out.filter((s) => s.kind === kind);
     if (category === UNSORTED) out = out.filter(isUnsorted);
     else if (category) out = out.filter((s) => s.category === category || s.category?.startsWith(category + '/'));
@@ -50,7 +51,7 @@ export function SchemaScreen({ category, query }: { category?: string; query?: s
     );
   }
 
-  const unsortedCount = grains.filter((s) => s.status === 'active' && isUnsorted(s)).length;
+  const unsortedCount = grains.filter((s) => (s.status === 'active' || s.status === 'draft') && isUnsorted(s)).length;
 
   return (
     <div className="screen schema">
@@ -84,7 +85,8 @@ export function SchemaScreen({ category, query }: { category?: string; query?: s
               ))}
             </div>
             <select value={status} onChange={(e) => setStatus(e.target.value as StatusFilter)} aria-label="Status">
-              <option value="active">Active</option>
+              <option value="current">Active &amp; drafts</option>
+              <option value="drafts">Drafts</option>
               <option value="retired">Dormant &amp; succeeded</option>
               <option value="all">All</option>
             </select>

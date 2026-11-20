@@ -1,11 +1,11 @@
 /** One grain: current text, metadata, actions and its full history. */
 import { useState } from 'react';
-import { deleteGrain, editMeta, reactivateGrain, reaffirmGrain, reviseGrain, spinOffGrain } from '../app/actions';
+import { deleteGrain, editMeta, finishGrain, reactivateGrain, reaffirmGrain, reviseGrain, spinOffGrain } from '../app/actions';
 import { href, navigate, useNow, useGrains } from '../app/hooks';
 import { allCategories, recentCategories } from '../core/categories';
-import { CONFIDENCE_LABEL } from '../core/kinds';
+import { CONFIDENCE_LABEL, KIND_INFO } from '../core/kinds';
 import { connections, currentRevision, displayTitle } from '../core/grain';
-import type { HistoryEntry, Revision, Grain } from '../core/types';
+import type { HistoryEntry, KindChange, Revision, Grain } from '../core/types';
 import { longDate, monthYear, plural } from './format';
 import { CategoryPicker, Icon, KindBadge, KindChips, RevisionBody, TagsField } from './parts';
 import { RetirePanel } from './RetirePanel';
@@ -17,6 +17,7 @@ export function GrainScreen({ id }: { id: string }) {
   const grains = useGrains();
   const now = useNow();
   const [mode, setMode] = useState<Mode>('view');
+  const [pickKind, setPickKind] = useState(false);
   if (!grains) return null;
   const grain = grains.find((s) => s.id === id);
   if (!grain) {
@@ -40,7 +41,14 @@ export function GrainScreen({ id }: { id: string }) {
           <Icon name="back" />
         </button>
         <div className="card-meta">
-          <KindBadge kind={grain.kind} />
+          <button
+            className="kind-button"
+            onClick={() => setPickKind(!pickKind)}
+            aria-expanded={pickKind}
+            title={grain.kind ? 'Change kind' : 'Choose a kind'}
+          >
+            {grain.kind ? <KindBadge kind={grain.kind} /> : <span className="kind-badge empty">+ Kind</span>}
+          </button>
           {grain.category ? (
             <a className="cat" href={href({ name: 'schema', category: grain.category })}>
               {grain.category}
@@ -49,11 +57,35 @@ export function GrainScreen({ id }: { id: string }) {
             <span className="cat unsorted">Unsorted</span>
           )}
           {cur.confidence && <span className="confidence">{CONFIDENCE_LABEL[cur.confidence]}</span>}
-          {grain.status !== 'active' && <span className="status-label">{grain.status}</span>}
+          {grain.status !== 'active' && grain.status !== 'draft' && <span className="status-label">{grain.status}</span>}
         </div>
       </header>
 
-      {grain.status !== 'active' && (
+      {pickKind && (
+        <div className="kind-picker">
+          <KindChips
+            value={grain.kind}
+            onChange={(k) => {
+              void editMeta(grain.id, { kind: k ?? null });
+              setPickKind(false);
+            }}
+          />
+          {grain.kind && grain.status !== 'draft' && <p className="muted small">Switching kinds is noted in the history.</p>}
+        </div>
+      )}
+
+      {grain.status === 'draft' && (
+        <div className="banner draft-banner">
+          <span>
+            <strong>Draft.</strong> It stays out of reviews until you mark it done.
+          </span>
+          <button className="button small primary" onClick={() => void finishGrain(grain.id)}>
+            Done
+          </button>
+        </div>
+      )}
+
+      {(grain.status === 'dormant' || grain.status === 'succeeded') && (
         <div className="banner">
           {grain.status === 'dormant' ? 'Dormant' : 'Succeeded'} since {longDate(grain.retired?.at ?? grain.updated, now)}
           {grain.retired?.why && <> — “{grain.retired.why}”</>}
@@ -88,7 +120,16 @@ export function GrainScreen({ id }: { id: string }) {
 
       {mode === 'view' && (
         <div className="grain-actions">
-          {grain.status === 'active' ? (
+          {grain.status === 'draft' ? (
+            <>
+              <button className="button primary" onClick={() => setMode('revise')}>
+                Revise
+              </button>
+              <button className="button" onClick={() => setMode('meta')}>
+                Edit labels
+              </button>
+            </>
+          ) : grain.status === 'active' ? (
             <>
               <button className="button primary" onClick={() => setMode('revise')}>
                 Revise
@@ -246,14 +287,19 @@ function MetaEditor({ grain, grains, onDone }: { grain: Grain; grains: Grain[]; 
   );
 }
 
-type Group = { type: 'revision'; rev: Revision; isCurrent: boolean } | { type: 'reaffirmations'; ats: string[] };
+type Group =
+  | { type: 'revision'; rev: Revision; isCurrent: boolean }
+  | { type: 'reaffirmations'; ats: string[] }
+  | { type: 'kindChange'; change: KindChange };
 
 /** History, newest first. Runs of reaffirmations collapse into one line. */
 function groupHistory(history: HistoryEntry[]): Group[] {
   const out: Group[] = [];
   let firstRev = true;
   for (const e of history) {
-    if (e.type === 'reaffirmation') {
+    if (e.type === 'kindChange') {
+      out.push({ type: 'kindChange', change: e });
+    } else if (e.type === 'reaffirmation') {
       const last = out[out.length - 1];
       if (last?.type === 'reaffirmations') last.ats.push(e.at);
       else out.push({ type: 'reaffirmations', ats: [e.at] });
@@ -275,7 +321,12 @@ function History({ grain, now }: { grain: Grain; now: string }) {
       </h2>
       <ol className="timeline">
         {groups.map((g, i) =>
-          g.type === 'reaffirmations' ? (
+          g.type === 'kindChange' ? (
+            <li key={i} className="tl-kind">
+              <span className="tl-dot small" />
+              {KIND_INFO[g.change.from].label} → {KIND_INFO[g.change.to].label} · {longDate(g.change.at, now)}
+            </li>
+          ) : g.type === 'reaffirmations' ? (
             <li key={i} className="tl-reaffirm">
               <span className="tl-dot small" />
               {g.ats.length === 1

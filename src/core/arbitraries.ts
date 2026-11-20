@@ -53,8 +53,15 @@ const arbRevision = fc.record(
 
 const arbReaffirmation = fc.record({ type: fc.constant('reaffirmation' as const), at: arbAt });
 
+const arbKindChange = fc.record({
+  type: fc.constant('kindChange' as const),
+  at: arbAt,
+  from: fc.constantFrom(...KINDS),
+  to: fc.constantFrom(...KINDS),
+});
+
 export const arbHistory = fc
-  .tuple(arbRevision, fc.array(fc.oneof(arbRevision, arbReaffirmation), { maxLength: 6 }))
+  .tuple(arbRevision, fc.array(fc.oneof(arbRevision, arbReaffirmation, arbKindChange), { maxLength: 6 }))
   .map(([first, rest]): HistoryEntry[] => {
     // The app gives every entry a distinct timestamp (each is strictly after the last).
     const seen = new Set<string>();

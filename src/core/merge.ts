@@ -83,9 +83,14 @@ export function mergeHistory(a: HistoryEntry[], b: HistoryEntry[]): HistoryEntry
 }
 
 function entryKey(e: HistoryEntry): string {
-  return e.type === 'reaffirmation'
-    ? JSON.stringify(['a', Date.parse(e.at)])
-    : JSON.stringify(['r', Date.parse(e.at), e.text, e.details ?? null, e.confidence ?? null, e.why ?? null]);
+  switch (e.type) {
+    case 'reaffirmation':
+      return JSON.stringify(['a', Date.parse(e.at)]);
+    case 'kindChange':
+      return JSON.stringify(['k', Date.parse(e.at), e.from, e.to]);
+    case 'revision':
+      return JSON.stringify(['r', Date.parse(e.at), e.text, e.details ?? null, e.confidence ?? null, e.why ?? null]);
+  }
 }
 
 /**

@@ -10,8 +10,10 @@ import { currentRevision, displayTitle } from './grain';
 import type { Grain } from './types';
 
 /** The schema format this app reads and writes. */
-// 2: revisions may have a `<!-- details -->` block. Version-1 files read fine.
-export const FORMAT_VERSION = 2;
+// 2: revisions may have a `<!-- details -->` block.
+// 3: `draft` status, and `<!-- kind … -->` entries in the history.
+// Older files read fine.
+export const FORMAT_VERSION = 3;
 
 export interface Manifest {
   formatVersion: number;

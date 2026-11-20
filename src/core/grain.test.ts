@@ -13,6 +13,8 @@ import {
   removeLink,
   connections,
   splitTidbit,
+  finishDraft,
+  isDraft,
   spinOff,
   revise,
   succeed,
@@ -227,5 +229,43 @@ describe('tidbit and details', () => {
     expect(currentRevision(r).details).toBe('D, expanded');
     ctx.advance(1);
     expect(currentRevision(revise(ctx, r, { text: 'T', details: '' })).details).toBeUndefined();
+  });
+});
+
+describe('drafts', () => {
+  it('quick captures start as drafts and become active when finished', () => {
+    const ctx = testCtx();
+    const d = createGrain(ctx, { text: 'jotted', draft: true });
+    expect(d.status).toBe('draft');
+    expect(isDraft(d)).toBe(true);
+    ctx.advance(1);
+    const done = finishDraft(ctx, d);
+    expect(done.status).toBe('active');
+    expect(done.history).toBe(d.history);
+    expect(finishDraft(ctx, done)).toBe(done);
+    expect(createGrain(ctx, { text: 'deliberate' }).status).toBe('active');
+  });
+});
+
+describe('kind changes', () => {
+  it('records insight → fact in the history', () => {
+    const ctx = testCtx();
+    const g = createGrain(ctx, { text: 'Clouds form where the conditions are right', kind: 'insight' });
+    ctx.advance(1000);
+    const f = updateMeta(ctx, g, { kind: 'fact' });
+    expect(f.kind).toBe('fact');
+    expect(f.history[0]).toEqual({ type: 'kindChange', at: '2026-01-01T00:00:01.000Z', from: 'insight', to: 'fact' });
+    expect(f.history.slice(1)).toEqual(g.history);
+    expect(currentRevision(f).text).toBe('Clouds form where the conditions are right');
+  });
+
+  it('does not record choosing a first kind, clearing it, or relabeling a draft', () => {
+    const ctx = testCtx();
+    const g = createGrain(ctx, { text: 'x' });
+    expect(updateMeta(ctx, g, { kind: 'tip' }).history).toHaveLength(1);
+    const t = createGrain(ctx, { text: 'x', kind: 'tip' });
+    expect(updateMeta(ctx, t, { kind: null }).history).toHaveLength(1);
+    const d = createGrain(ctx, { text: 'x', kind: 'tip', draft: true });
+    expect(updateMeta(ctx, d, { kind: 'fact' }).history).toHaveLength(1);
   });
 });

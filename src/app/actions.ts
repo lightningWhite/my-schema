@@ -4,11 +4,11 @@
  * IndexedDB transaction. Screens call these; they never touch the DB directly
  * for writes.
  */
-import { strToU8, strFromU8, unzipSync, zipSync } from 'fflate';
 import { toFiles, canWrite, fromFiles, mergeGrainSets, type ImportResult } from '../core/files';
 import { schedule, type ReviewOutcome } from '../core/review';
 import {
   createGrain,
+  finishDraft,
   goDormant,
   reactivate,
   reaffirm,
@@ -46,6 +46,13 @@ export async function capture(input: NewGrain): Promise<Grain> {
   const grain = createGrain(ctx, input);
   await db.grains.add(grain);
   return grain;
+}
+
+/** Mark a draft done. */
+export async function finishGrain(id: string): Promise<Grain> {
+  const next = finishDraft(ctx, await load(id));
+  await db.grains.put(next);
+  return next;
 }
 
 export async function editMeta(id: string, patch: MetaPatch): Promise<Grain> {
@@ -125,6 +132,8 @@ export async function exportZip(): Promise<Blob> {
   const [grains, review, manifest] = await Promise.all([db.grains.toArray(), db.getReview(), db.getManifest()]);
   const files = toFiles(grains, review, manifest);
   const entries: Record<string, Uint8Array> = {};
+  // Loaded on demand: only export and import need it.
+  const { strToU8, zipSync } = await import('fflate');
   for (const [path, text] of files) entries[`schema/${path}`] = strToU8(text);
   const zipped = zipSync(entries, { level: 6 });
   return new Blob([zipped as Uint8Array<ArrayBuffer>], { type: 'application/zip' });
@@ -144,6 +153,7 @@ export async function importFiles(files: File[]): Promise<ImportSummary> {
   const set = new Map<string, string>();
   for (const f of files) {
     if (f.name.endsWith('.zip')) {
+      const { strFromU8, unzipSync } = await import('fflate');
       const unzipped = unzipSync(new Uint8Array(await f.arrayBuffer()));
       for (const [path, data] of Object.entries(unzipped)) {
         if (!path.endsWith('/')) set.set(path, strFromU8(data));

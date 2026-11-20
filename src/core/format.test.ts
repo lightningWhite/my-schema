@@ -167,3 +167,28 @@ Read about it after a flight.
     expect(() => parseGrain(base + '<!-- details -->\nd\n\n<!-- details -->\nd\n')).toThrow(/details block/);
   });
 });
+
+describe('kind changes and drafts in files', () => {
+  it('round-trips a kind change and a draft status', () => {
+    const file = `---
+id: 01JDA7Q3V2N8XK5M4R6T9WBYCE
+kind: fact
+status: draft
+tags: []
+links: []
+origin: null
+updated: 2027-08-01T00:00:00Z
+---
+
+<!-- kind at=2027-08-01T00:00:00Z from=insight to=fact -->
+
+<!-- rev at=2027-07-14T03:12:00Z -->
+Clouds form where the conditions are right
+
+`;
+    const g = parseGrain(file);
+    expect(g.status).toBe('draft');
+    expect(g.history[0]).toEqual({ type: 'kindChange', at: '2027-08-01T00:00:00Z', from: 'insight', to: 'fact' });
+    expect(serializeGrain(g)).toBe(file);
+  });
+});
