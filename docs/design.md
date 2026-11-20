@@ -57,8 +57,9 @@ less clear, use the plain word.
 |---|---|
 | `id` | ULID — time-sortable, generated offline, globally unique without coordination. |
 | `title` | Optional. Short seeds don't need one; the UI shows the first line instead. |
-| `kind` | `observation` · `lesson` · `belief` · `value` · `speculation` · `knowhow`. Users can't add kinds in v1 (keeps filtering meaningful); categories carry the rest. |
-| `confidence` | `hunch` · `leaning` · `confident` · `conviction`. Lives on each revision, so you can see confidence change over time. |
+| `kind` | Optional. One of the kinds in §2.4. Users can't add kinds in v1 (keeps filtering meaningful); categories carry the rest. A seed with no kind is fine; the Sort screen nudges you to pick one. |
+| `source` | Optional. Who or where it came from — required in spirit for a `quote` ("Marcus Aurelius, *Meditations*"), useful for a `fact` or `tip`. |
+| `confidence` | Optional. `hunch` · `leaning` · `confident` · `conviction`. Lives on each revision, so you can see confidence change over time. Not shown for kinds where it makes no sense (`question`, `quote`). |
 | `status` | `active` · `dormant` · `succeeded`. |
 | `category` | One path in a tree, e.g. `Parenting/Discipline`, `Engineering/C++`. Created on the fly. |
 | `tags` | Free-form, cross-cutting. |
@@ -81,6 +82,41 @@ These are deliberately different:
 Nothing is ever deleted unless the user explicitly deletes a seed (and even
 then, Git keeps it — see §3.6).
 
+### 2.4 Kinds
+
+Nine kinds. Each answers a different question about the seed, so a filter by
+kind means something:
+
+| Kind | What it is | Example |
+|---|---|---|
+| `idea` | Something you could make, try or do. | "A bike rack that doubles as a planter." |
+| `insight` | Something you realized or learned — including lessons learned the hard way, and things you noticed. | "I argue worse when I'm hungry." |
+| `belief` | Something you hold to be true about how the world works. | "Most people are doing the best they can." |
+| `value` | Something you live by; a standard for your own choices. | "Leave every place better than I found it." |
+| `fact` | Something checked and true, worth remembering. | "Tomatoes stop setting fruit above ~90°F." |
+| `tip` | Practical know-how; how to do something well. | "Use `fmt` over `iostream` for formatting in C++." |
+| `speculation` | A hunch about how things are or will turn out. | "Remote work will make small towns grow again." |
+| `question` | An open question you're carrying. | "What does my son need from me that he isn't getting?" |
+| `quote` | Someone else's words that stuck. Uses `source`. | "The obstacle is the way." — Marcus Aurelius |
+
+Changes from the first draft: `observation` and `lesson` fold into `insight`
+(the line between them was hard to draw at capture time); `knowhow` became
+`tip`; `idea`, `fact`, `question` and `quote` are new.
+
+Capture should never stop to ask for a kind. The app **suggests** one from the
+text (a pure function in core: ends with `?` → `question`; wrapped in quotes or
+has an `— Someone` attribution → `quote`; starts with "I believe/I think" →
+`belief`; and so on). The suggestion is a pre-selected chip the user can
+change or ignore.
+
+### 2.5 Length
+
+Seeds are meant to be drops, not essays, but some ideas take a paragraph to
+remember what they meant. So there is **no hard limit**. Past ~500 characters
+the editor shows a quiet hint ("Seeds work best short — maybe a title and a
+summary first line?"). The first line is what lists show, so a long seed still
+reads well in the bank.
+
 ### 2.3 File format
 
 One Markdown file per seed: `seeds/<id>.md`. Markdown because a public bank on
@@ -90,7 +126,7 @@ GitHub should be readable by a person browsing the repo, without the app.
 ---
 id: 01JDA7Q3V2N8XK5M4R6T9WBYCE
 title: Deep watering beats frequent watering
-kind: lesson
+kind: insight
 status: active
 category: Garden/Tomatoes
 tags: [watering]
@@ -111,8 +147,12 @@ Water tomatoes deeply twice a week instead of a little every day.
 Rules:
 - Revisions are **newest first**, so GitHub's rendered view shows the current
   text at the top.
-- A line beginning `<!-- rev ` or exactly `<!-- why -->` is reserved. If seed text
-  ever contains one, the writer escapes it (`<!-- rev ` → `<!-- \rev `).
+- A line beginning `<!-- rev `, `<!-- reaffirmed ` or exactly `<!-- why -->` is
+  reserved. If seed text ever contains one, the writer escapes it by inserting
+  a backslash after `<!-- ` (`<!-- rev ` → `<!-- \rev `); a line that already
+  starts `<!-- \` gets one more backslash, so unescaping is exact.
+- Optional fields (`kind`, `source`, a revision's `confidence`) are omitted
+  when empty.
 - Unknown frontmatter fields are **preserved** on rewrite, so newer app versions
   can add fields without older ones destroying them.
 - Every bank has a `seedbank.json` manifest with a `formatVersion`. The app
@@ -151,6 +191,14 @@ When publishing, the user chooses **full history** or **current revision only**
 (old revisions may be more personal than the current one). The app writes the
 public copy first, then removes the private one, so a failure in the middle
 leaves a duplicate, never a lost seed.
+
+**Revising a public seed privately.** Once a seed is public, a new revision is
+*not* published automatically. It is saved as a **draft revision** in the
+private bank (`drafts/<id>.md`, holding only the unpublished revisions), and
+the seed shows "1 unpublished revision". The user sees their own latest text
+everywhere in the app; the public bank keeps the last published text. **Publish
+revision** appends the draft revisions to the public file and removes the
+draft, in that order. A draft never touches the public repo until then.
 
 ### 3.3 Local-first
 
@@ -229,8 +277,25 @@ has an interval that grows when reaffirmed:
 - Daily set size is a setting (default 5). Optional focus: "this week, review
   Parenting."
 
-State lives in `review.json`, not in seed files, so reviewing doesn't churn
-seed history or create noisy commits. Reviews are batched into one commit.
+Scheduling state (interval, next due date) lives in `review.json`, not in seed
+files, so skipping and rescheduling don't churn seed history. Reviews are
+batched into one commit.
+
+**Reaffirmations are part of the seed's history.** "Still true" is a
+meaningful signal — "I still believed this in 2029" gives a seed depth — so a
+reaffirmation is written into the seed file as a one-line marker between
+revisions, and the history view shows it:
+
+```markdown
+<!-- reaffirmed at=2028-03-02T14:00:00Z -->
+
+<!-- rev at=2027-07-14T03:12:00Z confidence=confident -->
+Water tomatoes deeply twice a week, and every day once it's above 95°F.
+```
+
+Reaffirmations are append-only like revisions, merge by union, and travel with
+the seed when it's published with full history. Several reaffirmations in a
+row collapse in the history view ("reaffirmed 4 times, last Mar 2029").
 
 ### 4.2 Reminders
 
@@ -327,13 +392,37 @@ src/
 6. **Round-trip safe.** `parse(serialize(seed)) == seed`, and unknown fields
    survive. Property-tested.
 
-### 6.2 Capture must be fast
+### 6.2 Screens
 
-The capture screen is the app's front door: open → type → save, with kind,
-category, and confidence optional (sensible defaults; file it later). A seed
-saved with no category lands in an **Unsorted** inbox that the review loop
-nudges you to file. Android share-target support ("share to Seedbank" from any
-app) is a cheap win.
+**Home is a single input**, like a search box: a large rounded field in the
+middle of an otherwise quiet screen, focused the moment the app opens. Type,
+press Enter (or the button), done.
+
+- **After saving**, a row of quick chips slides in under the field for a few
+  seconds: the suggested kind (pre-selected), your most recent categories, and
+  confidence. Tap to file it, or ignore them and it stays **Unsorted**. The
+  field is already clear and focused for the next seed.
+- **While typing**, seeds you already have that match appear below the field
+  (as a search box would). Tapping one opens it, so "I already wrote this
+  down" becomes a revision instead of a duplicate. The same box is how you
+  search your bank.
+- **Shift+Enter / the expand button** opens the full editor for a title,
+  multiple paragraphs, tags and source.
+
+The other screens are tabs (a bottom bar on phones, a side rail on desktop),
+each with a count badge where it helps:
+
+| Tab | What it's for |
+|---|---|
+| **Capture** | The home input above. |
+| **Sort** | The Unsorted inbox: seeds with no category (or no kind). One at a time, with the same quick chips. Swipe through them in a minute. |
+| **Review** | Today's handful of seeds (§4): Still true · Revise · Retire · Skip. |
+| **Bank** | Everything you have: category tree, filters by kind/status/tag, search. Opens a seed's page with its full history. |
+| **Explore** | (Phase 2) Other people's public banks; plant seeds into yours. |
+| **Settings** | Export/import, GitHub setup (Phase 1), review size. |
+
+Android share-target support ("share to Seedbank" from any app) is a cheap win
+later.
 
 ---
 
@@ -348,21 +437,22 @@ app) is a cheap win.
 
 ---
 
-## 8. Open questions
+## 8. Decisions
 
-1. **Category trees across banks.** When you plant Alice's `Faith/Prayer` seed,
-   does it keep her category, map to yours, or land in Unsorted? (Leaning:
-   Unsorted, showing her category as a suggestion.)
-2. **Publishing revised seeds.** Once a seed is public, revisions go public too.
-   Do we need a "revise privately" draft state?
-3. **Reaffirmations as history.** Should the history view show "reaffirmed Mar
-   2027" between revisions? It's a meaningful signal ("I still believed this in
-   2029") but makes the history longer.
-4. **Seed size.** Is there a soft length limit? Seeds are meant to be drops, not
-   essays — but a hard limit would frustrate people.
-5. **Kinds list.** Are six kinds right? Missing candidates: `question` (an open
-   question you're carrying), `quote` (someone else's words that stuck).
-6. **Shared family bank.** A couple or family keeping a joint bank (e.g. parenting
-   values) is just a repo with two collaborators — worth designing for
-   explicitly?
-7. **Name.** "Seedbank" for now; revisit if it stops fitting.
+Settled questions, kept here so the reasoning isn't lost.
+
+1. **Category trees across banks.** A planted seed lands in **Unsorted**, with
+   the origin's category shown as a one-tap suggestion.
+2. **Revising a public seed.** New revisions stay private as drafts until you
+   publish them (§3.2).
+3. **Reaffirmations as history.** Yes — written into the seed file and shown
+   in the history view (§4.1).
+4. **Seed size.** Soft limit only: a hint past ~500 characters, no cap (§2.5).
+5. **Kinds.** Nine kinds, suggested automatically at capture (§2.4).
+
+## 9. Open questions
+
+1. **Shared family bank.** A couple or family keeping a joint bank (e.g.
+   parenting values) is just a repo with two collaborators — worth designing
+   for explicitly? (Deferred; not yet clear how it should feel.)
+2. **Name.** "Seedbank" for now; revisit if it stops fitting.
