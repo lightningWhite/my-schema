@@ -69,7 +69,7 @@ makes the UI less clear, use the plain word.
 |---|---|
 | `id` | ULID — time-sortable, generated offline, globally unique without coordination. |
 | `title` | Optional. Short grains don't need one; the UI shows the first line instead. |
-| `kind` | Optional. One of the kinds in §2.4. Users can't add kinds in v1 (keeps filtering meaningful); categories carry the rest. A grain with no kind is fine; the Sort screen nudges you to pick one. |
+| `kind` | Optional. One of the kinds in §2.4. Users can't add kinds in v1 (keeps filtering meaningful); categories carry the rest. A grain with no kind is fine; the Organize screen nudges you to pick one. |
 | `source` | Optional. Who or where it came from — required in spirit for a `quote` ("Marcus Aurelius, *Meditations*"), useful for a `fact` or `tip`. |
 | `confidence` | Optional. `hunch` · `leaning` · `confident` · `conviction`. Lives on each revision, so you can see confidence change over time. Not shown for kinds where it makes no sense (`question`, `quote`). |
 | `status` | `active` · `dormant` · `succeeded`. |
