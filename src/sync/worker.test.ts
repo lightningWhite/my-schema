@@ -23,6 +23,16 @@ describe('sign-in Worker', () => {
     expect(JSON.parse(String(init.body))).toMatchObject({ client_id: 'id', client_secret: 'secret', code: 'c', code_verifier: 'v' });
   });
 
+  it('works without PKCE, as after installing the app', async () => {
+    const gh = vi.fn(async () => new Response(JSON.stringify({ access_token: 'ghu_9' })));
+    vi.stubGlobal('fetch', gh);
+    const { code_verifier: _v, ...noPkce } = good;
+    const res = await worker.fetch(post(noPkce), env);
+    expect(await res.json()).toEqual({ access_token: 'ghu_9' });
+    const [, init] = gh.mock.calls[0] as unknown as [string, RequestInit];
+    expect(JSON.parse(String(init.body))).not.toHaveProperty('code_verifier');
+  });
+
   it('refuses other websites', async () => {
     vi.stubGlobal('fetch', vi.fn());
     const res = await worker.fetch(post(good, 'https://evil.example'), env);

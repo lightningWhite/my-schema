@@ -4,7 +4,7 @@
  * "commit" in the normal path.
  */
 import { useState } from 'react';
-import { connectWithToken, signInAvailable, startSignIn } from '../app/auth';
+import { connectWithToken, createBackupUrl, signInAvailable, startInstall, startSignIn } from '../app/auth';
 import { syncService, useSyncStatus } from '../app/syncService';
 import { relativeDate } from './format';
 
@@ -18,9 +18,27 @@ export function BackupSection({ now }: { now: string }) {
   );
 }
 
+const STEP1_DONE = 'schema.backupCreated';
+
 function SignedOut() {
   const status = useSyncStatus();
   const [busy, setBusy] = useState(false);
+  const [created, setCreated] = useState(() => {
+    try {
+      return localStorage.getItem(STEP1_DONE) === '1';
+    } catch {
+      return false;
+    }
+  });
+  const markCreated = () => {
+    setCreated(true);
+    try {
+      localStorage.setItem(STEP1_DONE, '1');
+    } catch {
+      // fine: it's only a hint for this screen
+    }
+  };
+
   return (
     <>
       <p>
@@ -31,22 +49,47 @@ function SignedOut() {
       {status.signInError && <p className="warning">{status.signInError}</p>}
       {signInAvailable ? (
         <>
-          <button
-            className="button primary big github-button"
-            disabled={busy || status.signingIn}
-            onClick={async () => {
-              setBusy(true);
-              await startSignIn();
-            }}
-          >
-            <GitHubMark /> Sign in with GitHub
-          </button>
+          <ol className="setup-steps">
+            <li className={created ? 'done' : ''}>
+              <strong>Create your private backup.</strong>
+              <span>
+                GitHub opens with everything filled in. Tap <em>Create repository</em> at the bottom, then come back here. No GitHub account yet?
+                GitHub will offer to make one first — it's free.
+              </span>
+              <a className="button github-button" href={createBackupUrl()} target="_blank" rel="noreferrer" onClick={markCreated}>
+                <GitHubMark /> {created ? 'Open it again' : 'Create my backup on GitHub'}
+              </a>
+            </li>
+            <li>
+              <strong>Let Schema use it.</strong>
+              <span>
+                On GitHub's next page, choose <em>Only select repositories</em>, pick <em>schema-private</em>, and tap <em>Install</em>. Schema can
+                only ever see that one.
+              </span>
+              <button
+                className={`button github-button${created ? ' primary' : ''}`}
+                disabled={busy || status.signingIn}
+                onClick={() => {
+                  setBusy(true);
+                  startInstall();
+                }}
+              >
+                <GitHubMark /> Connect Schema to my backup
+              </button>
+            </li>
+          </ol>
           <p className="muted small">
-            No GitHub account?{' '}
-            <a href="https://github.com/signup" target="_blank" rel="noreferrer">
-              Create one for free
-            </a>{' '}
-            — it takes a couple of minutes — then come back here and tap <strong>Sign in with GitHub</strong>.
+            Already did this on another device?{' '}
+            <button
+              className="link-button"
+              disabled={busy || status.signingIn}
+              onClick={async () => {
+                setBusy(true);
+                await startSignIn();
+              }}
+            >
+              Just sign in with GitHub
+            </button>
           </p>
         </>
       ) : (

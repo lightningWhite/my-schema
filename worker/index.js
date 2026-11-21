@@ -2,7 +2,7 @@
  * Schema sign-in helper (Cloudflare Worker).
  *
  * Does exactly one thing: swaps the one-time code GitHub gives the app after
- * "Authorize" for an access token. GitHub requires the OAuth App's client
+ * signing in for an access token. GitHub requires the GitHub App's client
  * secret for that, and doesn't allow the request from a browser, so a static
  * app can't do it alone.
  *
@@ -11,8 +11,8 @@
  * may call it.
  *
  * Settings (wrangler secrets / vars):
- *   GITHUB_CLIENT_ID      the OAuth App's client ID
- *   GITHUB_CLIENT_SECRET  the OAuth App's client secret (secret)
+ *   GITHUB_CLIENT_ID      the GitHub App's client ID
+ *   GITHUB_CLIENT_SECRET  the GitHub App's client secret (secret)
  *   ALLOWED_ORIGIN        e.g. https://lightningwhite.github.io
  */
 export default {
@@ -42,7 +42,8 @@ export default {
       return reply(400, { error: 'bad request' });
     }
     const { code, code_verifier, redirect_uri } = input ?? {};
-    if (typeof code !== 'string' || typeof code_verifier !== 'string' || typeof redirect_uri !== 'string') {
+    // code_verifier (PKCE) is sent for plain sign-ins; installs don't use it.
+    if (typeof code !== 'string' || typeof redirect_uri !== 'string' || (code_verifier !== undefined && typeof code_verifier !== 'string')) {
       return reply(400, { error: 'bad request' });
     }
     // The redirect must come back to the app itself, never somewhere else.
@@ -55,8 +56,8 @@ export default {
         client_id: env.GITHUB_CLIENT_ID,
         client_secret: env.GITHUB_CLIENT_SECRET,
         code,
-        code_verifier,
         redirect_uri,
+        ...(code_verifier ? { code_verifier } : {}),
       }),
     });
     const body = await gh.json().catch(() => ({}));

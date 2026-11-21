@@ -19,7 +19,20 @@ export class FakeGitHub {
   beforeRefUpdate?: () => Promise<void>;
   requests: string[] = [];
 
-  constructor(private readonly tokens: Record<string, string>) {}
+  /**
+   * @param tokens token → login
+   * @param appGrants GitHub App sign-ins: token → the repo names the app was
+   *   given. These tokens can't create repos or see any other repo.
+   */
+  constructor(
+    private readonly tokens: Record<string, string>,
+    private readonly appGrants: Record<string, string[]> = {},
+  ) {}
+
+  /** A repo created on github.com without a README: no commits, no branch yet. */
+  createEmptyRepo(owner: string, name: string) {
+    this.repos.set(`${owner}/${name}`, { owner, name, branch: 'main', ref: '', commits: new Map(), trees: new Map() });
+  }
 
   private id(prefix: string) {
     return `${prefix}${(++this.n).toString(16).padStart(8, '0')}`;
@@ -69,8 +82,11 @@ export class FakeGitHub {
     const p = url.pathname;
 
     if (p === '/user' && method === 'GET') return json(200, { login });
+    const grants = auth ? this.appGrants[auth] : undefined;
     if (p === '/user/repos' && method === 'POST') {
+      if (grants) return json(403, { message: 'Resource not accessible by integration' });
       const name = body.name as string;
+      if (this.repos.has(`${login}/${name}`)) return json(422, { message: 'name already exists on this account' });
       const readme = this.blob('# My Schema\n');
       const tree = this.id('t');
       const c = this.id('c');
@@ -90,13 +106,27 @@ export class FakeGitHub {
     if (!m) return json(404, { message: 'Not Found' });
     const repo = this.repos.get(`${m[1]}/${m[2]}`);
     if (!repo || repo.owner !== login) return json(404, { message: 'Not Found' });
+    if (grants && !grants.includes(repo.name)) return json(404, { message: 'Not Found' });
     const rest = m[3] ?? '';
 
     if (rest === '' && method === 'GET') return json(200, repoJson(repo));
     let g: RegExpExecArray | null;
     if ((g = /^\/git\/ref\/heads\/(.+)$/.exec(rest)) && method === 'GET') {
+      if (!repo.ref) return json(409, { message: 'Git Repository is empty.' });
       return json(200, { object: { sha: repo.ref } });
     }
+    if ((g = /^\/contents\/(.+)$/.exec(rest)) && method === 'PUT') {
+      const text = new TextDecoder().decode(Uint8Array.from(atob(body.content), (c) => c.charCodeAt(0)));
+      const base = repo.ref ? repo.trees.get(repo.commits.get(repo.ref)!.tree)! : new Map<string, string>();
+      const tree = new Map(base).set(g[1]!, this.blob(text));
+      const treeSha = this.id('t');
+      repo.trees.set(treeSha, tree);
+      const c = this.id('c');
+      repo.commits.set(c, { tree: treeSha, parents: repo.ref ? [repo.ref] : [], message: body.message });
+      repo.ref = c;
+      return json(201, { commit: { sha: c } });
+    }
+    if (!repo.ref && rest.startsWith('/git/')) return json(409, { message: 'Git Repository is empty.' });
     if ((g = /^\/git\/commits\/(\w+)$/.exec(rest)) && method === 'GET') {
       const c = repo.commits.get(g[1]!);
       return c ? json(200, { sha: g[1], tree: { sha: c.tree } }) : json(404, { message: 'Not Found' });

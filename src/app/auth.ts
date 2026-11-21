@@ -1,24 +1,35 @@
 /**
- * "Sign in with GitHub" (docs/design.md §3.4). Standard OAuth web flow with
- * PKCE. The only step that needs a server — swapping the one-time code for a
- * token — goes through a tiny Worker we run (worker/), because GitHub needs a
+ * Signing in with the Schema GitHub App (docs/design.md §3.4).
+ *
+ * First time: (1) create the private backup on github.com from a pre-filled
+ * page, (2) install the Schema app on just that repository — GitHub then
+ * signs the person in and sends them back here. Another device: just sign in.
+ *
+ * The one step that needs a server — swapping GitHub's one-time code for a
+ * token — goes through a tiny Worker (worker/), because GitHub needs the app's
  * client secret for it and doesn't accept that request from a browser.
  *
  * Configured at build time:
- *   VITE_GITHUB_CLIENT_ID  the OAuth App's client ID (public)
- *   VITE_AUTH_URL          the Worker's URL
+ *   VITE_GITHUB_CLIENT_ID  the GitHub App's client ID (public)
+ *   VITE_GITHUB_APP_SLUG   the app's URL name, as in github.com/apps/<slug>
+ *   VITE_AUTH_URL          the Worker's address
  */
 import type { GitHubAccount } from '../sync/github';
 
 const CLIENT_ID = import.meta.env.VITE_GITHUB_CLIENT_ID as string | undefined;
+const APP_SLUG = import.meta.env.VITE_GITHUB_APP_SLUG as string | undefined;
 const AUTH_URL = import.meta.env.VITE_AUTH_URL as string | undefined;
 const PENDING = 'schema.signin';
 
 /** Whether one-click sign-in is set up in this build. */
-export const signInAvailable = !!(CLIENT_ID && AUTH_URL);
+export const signInAvailable = !!(CLIENT_ID && AUTH_URL && APP_SLUG);
 
 function redirectUri(): string {
   return location.origin + location.pathname;
+}
+
+function random(bytes: number): string {
+  return base64url(crypto.getRandomValues(new Uint8Array(bytes)));
 }
 
 function base64url(bytes: Uint8Array): string {
@@ -27,50 +38,74 @@ function base64url(bytes: Uint8Array): string {
   return btoa(s).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
 }
 
-/** Send the person to GitHub's own sign-in page. */
+/** Step 1: GitHub's new-repository page, filled in. Opens in a new tab. */
+export function createBackupUrl(): string {
+  const url = new URL('https://github.com/new');
+  url.searchParams.set('name', 'schema-private');
+  url.searchParams.set('visibility', 'private');
+  url.searchParams.set('description', 'My Schema backup: tidbits I keep, revise and come back to.');
+  return url.toString();
+}
+
+/**
+ * Step 2: install the Schema app on the backup. GitHub asks which
+ * repositories to share, then signs the person in and returns here.
+ */
+export function startInstall(): void {
+  if (!signInAvailable) throw new Error('Sign-in is not set up in this copy of the app.');
+  const state = random(16);
+  sessionStorage.setItem(PENDING, JSON.stringify({ state, verifier: null }));
+  location.assign(`https://github.com/apps/${APP_SLUG}/installations/new?state=${state}`);
+}
+
+/** Already set up (another device, or signed out): just sign in. */
 export async function startSignIn(): Promise<void> {
   if (!signInAvailable) throw new Error('Sign-in is not set up in this copy of the app.');
-  const verifier = base64url(crypto.getRandomValues(new Uint8Array(32)));
-  const state = base64url(crypto.getRandomValues(new Uint8Array(16)));
+  const verifier = random(32);
+  const state = random(16);
   const challenge = base64url(new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(verifier))));
   sessionStorage.setItem(PENDING, JSON.stringify({ state, verifier }));
   const url = new URL('https://github.com/login/oauth/authorize');
   url.searchParams.set('client_id', CLIENT_ID!);
   url.searchParams.set('redirect_uri', redirectUri());
-  url.searchParams.set('scope', 'repo');
   url.searchParams.set('state', state);
   url.searchParams.set('code_challenge', challenge);
   url.searchParams.set('code_challenge_method', 'S256');
-  url.searchParams.set('allow_signup', 'true');
   location.assign(url.toString());
 }
 
 /**
- * If GitHub just sent the person back here, finish signing in. Returns the
- * connected account, null if this isn't a sign-in return, or throws with a
- * plain-language message.
+ * If GitHub just sent the person back here (from installing or signing in),
+ * finish connecting. Returns null if this isn't such a return. Throws with a
+ * plain-language message if it didn't work out.
  */
 export async function finishSignInIfReturning(): Promise<GitHubAccount | null> {
   const params = new URLSearchParams(location.search);
   const code = params.get('code');
   const state = params.get('state');
   const error = params.get('error');
-  if (!code && !error) return null;
+  const fromInstall = params.has('setup_action') || params.has('installation_id');
+  if (!code && !error && !fromInstall) return null;
 
   // Clean the address bar either way.
   history.replaceState(null, '', redirectUri() + location.hash);
-  const pending = JSON.parse(sessionStorage.getItem(PENDING) ?? 'null') as { state: string; verifier: string } | null;
+  const pending = JSON.parse(sessionStorage.getItem(PENDING) ?? 'null') as { state: string; verifier: string | null } | null;
   sessionStorage.removeItem(PENDING);
 
   if (error) throw new Error(error === 'access_denied' ? 'Sign-in was cancelled.' : 'GitHub sign-in did not finish. Please try again.');
-  if (!pending || pending.state !== state) throw new Error('That sign-in link is out of date. Please try again.');
+  if (!code) throw new Error('Almost there — tap "Sign in with GitHub" to finish connecting.');
+  // The state check stops someone else's sign-in being slipped into this
+  // device (which would send your tidbits to their backup).
+  if (!pending || pending.state !== state) {
+    throw new Error(fromInstall ? 'Almost there — tap "Sign in with GitHub" to finish connecting.' : 'That sign-in link is out of date. Please try again.');
+  }
 
   let token: string;
   try {
     const res = await fetch(AUTH_URL!, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ code, code_verifier: pending.verifier, redirect_uri: redirectUri() }),
+      body: JSON.stringify({ code, redirect_uri: redirectUri(), ...(pending.verifier ? { code_verifier: pending.verifier } : {}) }),
     });
     const body = (await res.json()) as { access_token?: string; error?: string };
     if (!body.access_token) throw new Error(body.error ?? 'no token');

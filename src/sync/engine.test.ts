@@ -7,7 +7,7 @@ import { createTidbit, reaffirm, revise, updateMeta } from '../core/tidbit';
 import { SchemaDB } from '../store/db';
 import { syncOnce } from './engine';
 import { FakeGitHub } from './fakeGitHub';
-import { GitHubStore, REPO_NAME } from './github';
+import { GitHubStore, REPO_NAME, SetupNeededError } from './github';
 import { AuthError } from './store';
 
 let n = 0;
@@ -147,5 +147,39 @@ describe('sync with GitHub (end to end, fake GitHub)', () => {
     await device(gh);
     await device(gh, 'tok2');
     expect([...gh.repos.keys()]).toEqual([`grandma/${REPO_NAME}`]);
+  });
+});
+
+describe('connecting with the Schema GitHub App', () => {
+  it('works with a backup the person created on github.com (empty) and shared with Schema', async () => {
+    const gh = new FakeGitHub({ app: 'mom' }, { app: [REPO_NAME] });
+    gh.createEmptyRepo('mom', REPO_NAME);
+    const account = await GitHubStore.connect('app', gh.fetch);
+    expect(account).toMatchObject({ login: 'mom', owner: 'mom', repo: REPO_NAME, branch: 'main' });
+    expect([...gh.files('mom', REPO_NAME).keys()]).toEqual(['README.md']);
+
+    const db = new SchemaDB(`device-${++n}`);
+    await db.setSyncAccount({ provider: 'github', ...account });
+    await db.tidbits.add(createTidbit(testCtx(), { text: 'first tidbit' }));
+    await syncOnce(db, new GitHubStore(account, gh.fetch), () => 'now');
+    expect([...gh.files('mom', REPO_NAME).keys()].filter((p) => p.startsWith('tidbits/'))).toHaveLength(1);
+  });
+
+  it('explains what to do when the backup does not exist yet', async () => {
+    const gh = new FakeGitHub({ app: 'mom' }, { app: [] });
+    await expect(GitHubStore.connect('app', gh.fetch)).rejects.toThrow(SetupNeededError);
+  });
+
+  it('explains what to do when the backup exists but was not shared with Schema', async () => {
+    const gh = new FakeGitHub({ app: 'mom' }, { app: ['something-else'] });
+    gh.createEmptyRepo('mom', REPO_NAME);
+    await expect(GitHubStore.connect('app', gh.fetch)).rejects.toThrow(SetupNeededError);
+  });
+
+  it('a token that can create repos still creates the backup itself', async () => {
+    const gh = new FakeGitHub({ pat: 'dev' });
+    const account = await GitHubStore.connect('pat', gh.fetch);
+    expect(account.repo).toBe(REPO_NAME);
+    expect(gh.repos.has(`dev/${REPO_NAME}`)).toBe(true);
   });
 });

@@ -7,6 +7,22 @@
 import { AuthError, BackupError, StaleError, type BackupStore, type Listing } from './store';
 
 export const REPO_NAME = 'schema-private';
+export const REPO_DESCRIPTION = 'My Schema backup: tidbits I keep, revise and come back to.';
+const README = `# My Schema backup
+
+This private repository is where [Schema](https://lightningwhite.github.io/my-schema/) keeps
+your tidbits: one Markdown file per tidbit in \`tidbits/\`. Only you can see it.
+The app keeps it up to date; you don't need to do anything here.
+`;
+
+/** The person still has a step to do on GitHub: create the backup, or share it with Schema. */
+export class SetupNeededError extends Error {
+  constructor() {
+    super(
+      "Schema can't see your schema-private backup yet. Make sure you've created it on GitHub (step 1), and picked it when connecting Schema (step 2).",
+    );
+  }
+}
 const API = 'https://api.github.com';
 
 type Fetch = typeof fetch;
@@ -32,27 +48,49 @@ export class GitHubStore implements BackupStore {
   }
 
   /**
-   * Sign in with a token: find the person's private backup repo, creating it
-   * if this is their first time.
+   * Connect to the person's private backup repo (`schema-private`).
+   *
+   * With the Schema GitHub App, the person creates the repo on github.com and
+   * grants the app access to just that repo; the app can't create it. With a
+   * personal access token that allows it, a missing repo is created here.
+   * Throws SetupNeededError, in plain words, when the repo is missing or not
+   * shared with Schema.
    */
   static async connect(token: string, fetchImpl: Fetch = fetch.bind(globalThis)): Promise<GitHubAccount> {
     const api = (path: string, init?: CallInit) => call(fetchImpl, token, path, init);
     const user = (await api('/user')) as { login: string };
-    let repo = (await api(`/repos/${user.login}/${REPO_NAME}`, { allow404: true })) as
-      | { default_branch: string; owner: { login: string }; name: string }
-      | null;
+    type RepoJson = { default_branch: string; owner: { login: string }; name: string };
+    let repo = (await api(`/repos/${user.login}/${REPO_NAME}`, { allow404: true })) as RepoJson | null;
     if (!repo) {
-      repo = (await api('/user/repos', {
-        method: 'POST',
-        body: JSON.stringify({
-          name: REPO_NAME,
-          private: true,
-          auto_init: true, // gives it a first commit and a branch to build on
-          description: 'My Schema: tidbits I keep, revise and come back to.',
-        }),
-      })) as { default_branch: string; owner: { login: string }; name: string };
+      try {
+        repo = (await api('/user/repos', {
+          method: 'POST',
+          body: JSON.stringify({
+            name: REPO_NAME,
+            private: true,
+            auto_init: true,
+            description: REPO_DESCRIPTION,
+          }),
+        })) as RepoJson;
+      } catch (e) {
+        // GitHub App sign-ins can't create repos, and can't see repos they
+        // weren't given. Either way the person has a step to do on GitHub.
+        if (e instanceof HttpError && [403, 404, 422].includes(e.status)) throw new SetupNeededError();
+        throw e;
+      }
     }
-    return { token, login: user.login, owner: repo.owner.login, repo: repo.name, branch: repo.default_branch };
+    const owner = repo.owner.login;
+    const branch = repo.default_branch;
+    // A repo created on github.com without a README is empty, and GitHub's Git
+    // Data API refuses to work on an empty repo. Give it a first file.
+    const ref = await api(`/repos/${owner}/${repo.name}/git/ref/heads/${branch}`, { allow404: true, allow409: true });
+    if (!ref) {
+      await api(`/repos/${owner}/${repo.name}/contents/README.md`, {
+        method: 'PUT',
+        body: JSON.stringify({ message: 'Start my Schema backup', content: encodeBase64Utf8(README), branch }),
+      });
+    }
+    return { token, login: user.login, owner, repo: repo.name, branch };
   }
 
   private api(path: string, init?: RequestInit) {
@@ -123,10 +161,10 @@ class HttpError extends Error {
   }
 }
 
-type CallInit = RequestInit & { allow404?: boolean };
+type CallInit = RequestInit & { allow404?: boolean; allow409?: boolean };
 
 async function call(fetchImpl: Fetch, token: string, path: string, init: CallInit = {}): Promise<unknown> {
-  const { allow404, ...rest } = init;
+  const { allow404, allow409, ...rest } = init;
   let res: Response;
   try {
     res = await fetchImpl(API + path, {
@@ -142,6 +180,7 @@ async function call(fetchImpl: Fetch, token: string, path: string, init: CallIni
     throw new BackupError("Couldn't reach GitHub. Check your connection.");
   }
   if (res.status === 404 && allow404) return null;
+  if (res.status === 409 && allow409) return null; // "Git Repository is empty"
   if (res.status === 401) throw new AuthError('GitHub no longer accepts this sign-in. Please sign in again.');
   if (!res.ok) {
     const body = (await res.json().catch(() => ({}))) as { message?: string };
@@ -155,6 +194,12 @@ async function call(fetchImpl: Fetch, token: string, path: string, init: CallIni
   }
   if (res.status === 204) return null;
   return res.json();
+}
+
+function encodeBase64Utf8(text: string): string {
+  let bin = '';
+  for (const b of new TextEncoder().encode(text)) bin += String.fromCharCode(b);
+  return btoa(bin);
 }
 
 function decodeBase64Utf8(b64: string): string {

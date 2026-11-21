@@ -26,6 +26,7 @@ jobs:
           # still works; Settings offers the token option instead.
           VITE_GITHUB_CLIENT_ID: ${{ vars.SIGNIN_CLIENT_ID }}
           VITE_AUTH_URL: ${{ vars.SIGNIN_URL }}
+          VITE_GITHUB_APP_SLUG: ${{ vars.SIGNIN_APP_SLUG }}
       - uses: actions/upload-pages-artifact@v3
         if: github.ref == 'refs/heads/main'
         with:
