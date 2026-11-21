@@ -7,6 +7,9 @@
 import { AuthError, BackupError, StaleError, type BackupStore, type Listing } from './store';
 
 export const REPO_NAME = 'schema-private';
+const REF_RETRIES = 3;
+const REF_RETRY_DELAY = 700;
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 export const REPO_DESCRIPTION = 'My Schema backup: tidbits I keep, revise and come back to.';
 const README = `# My Schema backup
 
@@ -43,6 +46,7 @@ export class GitHubStore implements BackupStore {
   constructor(
     private readonly account: GitHubAccount,
     private readonly fetchImpl: Fetch = fetch.bind(globalThis),
+    private readonly retryDelay = REF_RETRY_DELAY,
   ) {
     this.webUrl = `https://github.com/${account.owner}/${account.repo}`;
   }
@@ -137,15 +141,24 @@ export class GitHubStore implements BackupStore {
       method: 'POST',
       body: JSON.stringify({ message, tree: tree.sha, parents: [head] }),
     })) as { sha: string };
-    try {
-      await this.api(`/git/refs/heads/${this.account.branch}`, {
-        method: 'PATCH',
-        body: JSON.stringify({ sha: commit.sha, force: false }),
-      });
-    } catch (e) {
-      // 422 "Update is not a fast forward": another device synced first.
-      if (e instanceof HttpError && e.status === 422) throw new StaleError();
-      throw e;
+    // Move the branch to the new commit, but only as a fast-forward. GitHub
+    // answers 422 both when another device moved the branch first (stale) and
+    // for other reasons — including briefly right after a commit is created —
+    // so check which before deciding.
+    for (let attempt = 0; ; attempt++) {
+      try {
+        await this.api(`/git/refs/heads/${this.account.branch}`, {
+          method: 'PATCH',
+          body: JSON.stringify({ sha: commit.sha, force: false }),
+        });
+        break;
+      } catch (e) {
+        if (!(e instanceof HttpError && e.status === 422)) throw e;
+        const now = (await this.api(`/git/ref/heads/${this.account.branch}`)) as { object: { sha: string } };
+        if (now.object.sha !== head) throw new StaleError();
+        if (attempt >= REF_RETRIES) throw new BackupError(`GitHub didn't accept the update (${e.message}). Will try again shortly.`);
+        await sleep(this.retryDelay * (attempt + 1));
+      }
     }
     this.treeByCommit.set(commit.sha, tree.sha);
     return { head: commit.sha, files: await this.listTree(tree.sha) };

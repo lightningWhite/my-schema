@@ -19,7 +19,7 @@ export interface SyncResult {
   errors: Array<{ path: string; error: string }>;
 }
 
-const MAX_ATTEMPTS = 4;
+const MAX_ATTEMPTS = 5;
 
 export async function syncOnce(db: SchemaDB, store: BackupStore, now: () => string): Promise<SyncResult> {
   for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
@@ -54,7 +54,12 @@ export async function syncOnce(db: SchemaDB, store: BackupStore, now: () => stri
         const n = [...plan.writes.keys()].filter((p) => p.startsWith('tidbits/')).length + plan.deletes.length;
         ({ files: listing } = await store.write(head, plan.writes, plan.deletes, `Sync ${n} tidbit${n === 1 ? '' : 's'} · ${now()}`));
       } catch (e) {
-        if (e instanceof StaleError) continue; // another device synced first: start over
+        if (e instanceof StaleError) {
+          // Another device (or another tab) synced first: wait a moment, so two
+          // devices don't keep colliding, then start over from its version.
+          await new Promise((r) => setTimeout(r, 250 + Math.random() * 750 * (attempt + 1)));
+          continue;
+        }
         throw e;
       }
     }

@@ -15,6 +15,8 @@ export class FakeGitHub {
   readonly repos = new Map<string, Repo>();
   readonly blobs = new Map<string, string>(); // sha → text (content-addressed)
   private n = 0;
+  /** The next N branch updates fail with a 422 that isn't about staleness. */
+  refUpdateFailures = 0;
   /** Runs just before a branch update is applied (simulate another device). */
   beforeRefUpdate?: () => Promise<void>;
   requests: string[] = [];
@@ -161,6 +163,10 @@ export class FakeGitHub {
         const hook = this.beforeRefUpdate;
         this.beforeRefUpdate = undefined;
         await hook();
+      }
+      if (this.refUpdateFailures > 0) {
+        this.refUpdateFailures--;
+        return json(422, { message: 'Reference update failed' });
       }
       const c = repo.commits.get(body.sha);
       if (!c) return json(422, { message: 'Object does not exist' });

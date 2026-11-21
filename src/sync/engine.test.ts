@@ -183,3 +183,42 @@ describe('connecting with the Schema GitHub App', () => {
     expect(gh.repos.has(`dev/${REPO_NAME}`)).toBe(true);
   });
 });
+
+describe('when GitHub refuses an update', () => {
+  it('retries a brief hiccup and succeeds', async () => {
+    const gh = new FakeGitHub({ tok: 'me' });
+    const account = await GitHubStore.connect('tok', gh.fetch);
+    const db = new SchemaDB(`device-${++n}`);
+    await db.setSyncAccount({ provider: 'github', ...account });
+    await db.tidbits.add(createTidbit(testCtx(), { text: 'x' }));
+    gh.refUpdateFailures = 2;
+    await syncOnce(db, new GitHubStore(account, gh.fetch, 1), () => 'now');
+    expect([...gh.files('me', REPO_NAME).keys()].some((p) => p.startsWith('tidbits/'))).toBe(true);
+  });
+
+  it("shows GitHub's actual reason instead of looping, if it keeps refusing", async () => {
+    const gh = new FakeGitHub({ tok: 'me' });
+    const account = await GitHubStore.connect('tok', gh.fetch);
+    const db = new SchemaDB(`device-${++n}`);
+    await db.tidbits.add(createTidbit(testCtx(), { text: 'x' }));
+    gh.refUpdateFailures = 99;
+    await expect(syncOnce(db, new GitHubStore(account, gh.fetch, 1), () => 'now')).rejects.toThrow(/Reference update failed/);
+  });
+
+  it('two copies of the app syncing the same device at once both finish', async () => {
+    const gh = new FakeGitHub({ tok: 'me' });
+    const account = await GitHubStore.connect('tok', gh.fetch);
+    const name = `shared-${++n}`;
+    const tab1 = new SchemaDB(name);
+    const tab2 = new SchemaDB(name);
+    await tab1.setSyncAccount({ provider: 'github', ...account });
+    const ctx = testCtx();
+    for (let i = 0; i < 3; i++) await tab1.tidbits.add(createTidbit(ctx, { text: `t${i}` }));
+    await Promise.all([
+      syncOnce(tab1, new GitHubStore(account, gh.fetch, 1), () => 'now'),
+      syncOnce(tab2, new GitHubStore(account, gh.fetch, 1), () => 'now'),
+    ]);
+    expect([...gh.files('me', REPO_NAME).keys()].filter((p) => p.startsWith('tidbits/'))).toHaveLength(3);
+    expect(await tab2.tidbits.count()).toBe(3);
+  });
+});

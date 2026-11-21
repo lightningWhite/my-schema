@@ -162,7 +162,10 @@ class SyncService {
       // Loaded on first use, so people who never sign in never download it.
       const [{ syncOnce }, { GitHubStore }] = await Promise.all([import('../sync/engine'), import('../sync/github')]);
       const store = new GitHubStore(account);
-      const result = await syncOnce(db, store, () => new Date().toISOString());
+      // One sync at a time across every open copy of the app (home-screen app,
+      // browser tabs): they share this device's data, so they'd only collide.
+      const pass = () => syncOnce(db, store, () => new Date().toISOString());
+      const result = navigator.locks ? await navigator.locks.request('schema-sync', pass) : await pass();
       this.syncedFingerprint = await fingerprint();
       const after = await db.getSyncAccount();
       this.set({ state: 'idle', lastSyncAt: after?.lastSyncAt, message: undefined, needsSignIn: false });
