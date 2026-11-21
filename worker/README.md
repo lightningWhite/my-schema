@@ -37,9 +37,10 @@ repository** with Schema, instead of their whole GitHub account.
      (Metadata: read-only is added automatically.) Nothing else.
    - **Where can this GitHub App be installed?** **Any account**.
 3. Click **Create GitHub App**.
-4. On the app's page, copy the **Client ID** (not the App ID). Click **Generate a
-   new client secret** and copy it (GitHub shows it once). You don't need a
-   private key.
+4. On the app's settings page, copy the **Client ID** (not the App ID). In the
+   **Credentials** section, under **Client secrets**, click **Generate a new
+   client secret** and copy it (GitHub shows it once). You don't need a private
+   key.
 
 If you registered an OAuth App earlier, you can delete it once this works.
 
