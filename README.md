@@ -16,8 +16,9 @@ If you want, you can publish some tidbits. Other people can browse them and
 **plant** them in their own schemas, then grow them their own way, with a link back
 to where each one came from.
 
-- **Free, with no server.** The app is a static PWA on GitHub Pages and runs in
-  your browser.
+- **Free.** The app is a static web app on GitHub Pages and runs in your
+  browser. The only server piece is a tiny sign-in helper that never sees your
+  tidbits.
 - **Your data lives in your own repos.** A private GitHub repo for your schema, and
   optionally a public one for what you share.
 - **Works offline.** Everything is stored on your device and syncs when you're
@@ -29,6 +30,30 @@ light and dark.
 > **Status: Phase 1 (sync).** Everything works on one device, and sync to a
 > private GitHub repo keeps devices in step. Sharing comes next. The design is in [`docs/design.md`](docs/design.md).
 
+## Get started
+
+**Open the app: https://lightningwhite.github.io/my-schema/**
+
+1. **Add it to your home screen** so it opens like an app and works offline.
+   - iPhone (Safari): Share → *Add to Home Screen*.
+   - Android (Chrome): ⋮ → *Add to Home screen* (or *Install app*).
+2. **Add a tidbit.** Type something you've noticed, learned or come to believe,
+   and press Enter. Shift+Enter adds details under it. New tidbits wait in
+   **Organize** as drafts until you have a minute to file them.
+3. **Back it up** (optional, recommended). Settings → **Back up & sync**:
+   1. *Create my backup on GitHub*: GitHub opens with everything filled in;
+      tap **Create repository**, then come back. No account? GitHub offers to
+      make one first. It's free.
+   2. *Connect Schema to my backup*: choose **Only select repositories**, pick
+      **schema-private**, tap **Install**. You land back in the app, backed up.
+
+   On another device, open the app and tap **Just sign in with GitHub** in the
+   same place. Schema can only ever see your `schema-private` repository, and
+   only you can see that.
+
+Without backup, your tidbits live only on that device; Settings can also
+export them as a zip of plain Markdown files.
+
 ## Development
 
 ```sh
@@ -39,4 +64,7 @@ npm run build    # static site in dist/
 ```
 
 Pushing to `main` runs the tests and deploys to GitHub Pages (set
-**Settings → Pages → Source** to **GitHub Actions** once).
+**Settings → Pages → Source** to **GitHub Actions** once). One-time setup for
+"Sign in with GitHub" (a GitHub App and a tiny Cloudflare Worker) is in
+[`worker/README.md`](worker/README.md); without it, Settings offers a token
+option instead.
