@@ -287,8 +287,14 @@ Another device: **Just sign in with GitHub** (OAuth web flow with PKCE).
 - User tokens are set not to expire, so nobody gets signed out unexpectedly.
   The token lives only on the device (IndexedDB). *Sign out of this device*
   forgets it; uninstalling the app on GitHub revokes it everywhere.
-- If the repo is missing or not shared, connecting says so in plain words and
-  the two steps stay on screen.
+- Right after an install, GitHub can take up to a minute or two before the
+  new sign-in can see the repo. Connecting therefore waits ("Finishing setup
+  with GitHub…", up to ~90 s) instead of failing. If it still can't, it asks
+  GitHub why (`/user/installations`) and says exactly what's missing: not
+  installed (step 2), installed without `schema-private` (a button to that
+  installation's settings), or GitHub still catching up ("Check again"). The
+  signed-in token is kept in memory so "Check again" doesn't need another
+  sign-in.
 - On phones, GitHub usually returns people into a different tab than they
   left from (from the home-screen app into the browser). So the sign-in
   marker lives in localStorage (expires after 30 minutes), and every open

@@ -1610,3 +1610,9 @@ kbd {
 .setup-steps a.button.primary {
   color: var(--accent-ink);
 }
+.setup-problem p {
+  margin: 0 0 8px;
+}
+.setup-problem .button-row {
+  margin-top: 4px;
+}

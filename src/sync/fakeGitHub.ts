@@ -15,6 +15,11 @@ export class FakeGitHub {
   readonly repos = new Map<string, Repo>();
   readonly blobs = new Map<string, string>(); // sha → text (content-addressed)
   private n = 0;
+  /**
+   * Simulates GitHub catching up after an install: the next N repo lookups by
+   * GitHub App sign-ins answer 404 even for granted repos.
+   */
+  propagationLookups = 0;
   /** The next N branch updates fail with a 422 that isn't about staleness. */
   refUpdateFailures = 0;
   /** Runs just before a branch update is applied (simulate another device). */
@@ -104,11 +109,24 @@ export class FakeGitHub {
       return json(201, repoJson(repo));
     }
 
+    if (p === '/user/installations' && method === 'GET') {
+      if (!grants) return json(403, { message: 'Must authenticate with a GitHub App user token' });
+      return json(200, { total_count: grants.length ? 1 : 0, installations: grants.length ? [{ id: 7, account: { login } }] : [] });
+    }
+    if (p === '/user/installations/7/repositories' && method === 'GET') {
+      if (!grants?.length) return json(404, { message: 'Not Found' });
+      return json(200, { total_count: grants.length, repositories: grants.map((name) => ({ name, owner: { login } })) });
+    }
+
     const m = /^\/repos\/([^/]+)\/([^/]+)(\/.*)?$/.exec(p);
     if (!m) return json(404, { message: 'Not Found' });
     const repo = this.repos.get(`${m[1]}/${m[2]}`);
     if (!repo || repo.owner !== login) return json(404, { message: 'Not Found' });
     if (grants && !grants.includes(repo.name)) return json(404, { message: 'Not Found' });
+    if (grants && !m[3] && this.propagationLookups > 0) {
+      this.propagationLookups--;
+      return json(404, { message: 'Not Found' });
+    }
     const rest = m[3] ?? '';
 
     if (rest === '' && method === 'GET') return json(200, repoJson(repo));

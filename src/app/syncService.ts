@@ -9,7 +9,7 @@ import { useSyncExternalStore } from 'react';
 import { NewerFormatError } from '../core/sync';
 import type { SyncAccount } from '../store/db';
 import { finishSignInIfReturning } from './auth';
-import type { GitHubAccount } from '../sync/github';
+import type { GitHubAccount, SetupProblem } from '../sync/github';
 import { AuthError } from '../sync/store';
 import { db } from './actions';
 
@@ -27,6 +27,10 @@ export interface SyncStatus {
   signingIn?: boolean;
   /** Sign-in didn't work (shown while not connected). */
   signInError?: string;
+  /** What's missing, when GitHub can tell us; drives the buttons shown. */
+  setupProblem?: SetupProblem;
+  /** Signed in, waiting for GitHub to catch up after installing. */
+  waitingForGitHub?: boolean;
 }
 
 const CHANGE_DELAY = 4000;
@@ -89,20 +93,57 @@ class SyncService {
     this.request(0);
   }
 
+  /** A signed-in token whose backup isn't reachable yet; kept for "Check again". */
+  private pendingToken: string | undefined;
+
   /** If GitHub just sent the person back from its sign-in page, finish connecting. */
   async finishSignIn() {
-    this.set({ signingIn: true, signInError: undefined });
+    let returned: Awaited<ReturnType<typeof finishSignInIfReturning>>;
     try {
-      const account = await finishSignInIfReturning();
-      if (account) {
-        await this.connect(account);
-        location.hash = '#/settings';
-      }
+      returned = await finishSignInIfReturning();
     } catch (e) {
-      this.set({ signInError: e instanceof Error ? e.message : String(e) });
-    } finally {
-      this.set({ signingIn: false });
+      this.set({ signInError: e instanceof Error ? e.message : String(e), setupProblem: undefined });
+      return;
     }
+    if (!returned) return;
+    location.hash = '#/settings';
+    // Right after installing, GitHub can take a minute to let the sign-in see
+    // the repo: be patient rather than telling people to redo steps.
+    await this.connectToken(returned.token, returned.fromInstall);
+  }
+
+  /**
+   * Connect with a token (from signing in, or pasted by a developer), waiting
+   * for GitHub to catch up if needed, then sync.
+   */
+  async connectToken(token: string, patient = false) {
+    this.set({ signingIn: true, waitingForGitHub: false, signInError: undefined, setupProblem: undefined });
+    try {
+      const { GitHubStore } = await import('../sync/github');
+      const account = await GitHubStore.connectWhenReady(token.trim(), {
+        patient,
+        onWaiting: () => this.set({ waitingForGitHub: true }),
+      });
+      this.pendingToken = undefined;
+      await this.connect(account);
+    } catch (e) {
+      const { SetupNeededError } = await import('../sync/github');
+      if (e instanceof SetupNeededError) {
+        this.pendingToken = token;
+        this.set({ signInError: e.message, setupProblem: e.problem });
+      } else {
+        this.set({ signInError: e instanceof Error ? e.message : String(e), setupProblem: undefined });
+      }
+    } finally {
+      this.set({ signingIn: false, waitingForGitHub: false });
+    }
+  }
+
+  /** "Check again": retry with the token we already have, or sign in afresh. */
+  async checkAgain(): Promise<boolean> {
+    if (!this.pendingToken) return false;
+    await this.connectToken(this.pendingToken, false);
+    return true;
   }
 
   /** Connect a GitHub account (after sign-in), then sync right away. */
@@ -129,10 +170,7 @@ class SyncService {
     this.listeners.forEach((fn) => fn());
   }
 
-  /** Show a sign-in problem (e.g. a token that didn't work). */
-  reportSignInError(message: string | undefined) {
-    this.set({ signInError: message });
-  }
+
 
   /** Sync after `delay` ms (coalescing repeated requests). */
   request(delay = 0) {

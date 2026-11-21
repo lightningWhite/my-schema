@@ -222,3 +222,48 @@ describe('when GitHub refuses an update', () => {
     expect(await tab2.tidbits.count()).toBe(3);
   });
 });
+
+describe('finishing setup after installing the app', () => {
+  const fast = { attempts: 5, delayMs: 1 };
+
+  it('waits for GitHub to catch up instead of giving up (what happened to the first real user)', async () => {
+    const gh = new FakeGitHub({ app: 'wife' }, { app: [REPO_NAME] });
+    gh.createEmptyRepo('wife', REPO_NAME);
+    gh.propagationLookups = 3; // GitHub can't see the new grant for a little while
+    let waited = false;
+    const account = await GitHubStore.connectWhenReady('app', { fetch: gh.fetch, patient: true, onWaiting: () => (waited = true), ...fast });
+    expect(account.repo).toBe(REPO_NAME);
+    expect(waited).toBe(true);
+  });
+
+  it('also waits when GitHub already lists the repo as chosen, even on a plain sign-in', async () => {
+    const gh = new FakeGitHub({ app: 'wife' }, { app: [REPO_NAME] });
+    gh.createEmptyRepo('wife', REPO_NAME);
+    gh.propagationLookups = 2;
+    const account = await GitHubStore.connectWhenReady('app', { fetch: gh.fetch, patient: false, ...fast });
+    expect(account.repo).toBe(REPO_NAME);
+  });
+
+  it('says plainly when the app is not installed', async () => {
+    const gh = new FakeGitHub({ app: 'wife' }, { app: [] });
+    const err = await GitHubStore.connectWhenReady('app', { fetch: gh.fetch, ...fast }).catch((e) => e);
+    expect(err).toBeInstanceOf(SetupNeededError);
+    expect(err.problem).toEqual({ kind: 'not-installed' });
+  });
+
+  it('says plainly when schema-private was not chosen, with a link to fix it', async () => {
+    const gh = new FakeGitHub({ app: 'wife' }, { app: ['vacation-photos'] });
+    gh.createEmptyRepo('wife', REPO_NAME);
+    const err = await GitHubStore.connectWhenReady('app', { fetch: gh.fetch, ...fast }).catch((e) => e);
+    expect(err.problem).toEqual({ kind: 'repo-not-chosen', settingsUrl: 'https://github.com/settings/installations/7' });
+  });
+
+  it('gives up after a while if GitHub never catches up, saying so', async () => {
+    const gh = new FakeGitHub({ app: 'wife' }, { app: [REPO_NAME] });
+    gh.createEmptyRepo('wife', REPO_NAME);
+    gh.propagationLookups = 99;
+    const err = await GitHubStore.connectWhenReady('app', { fetch: gh.fetch, patient: true, ...fast }).catch((e) => e);
+    expect(err.problem).toEqual({ kind: 'not-visible-yet' });
+    expect(err.message).toMatch(/Check again/);
+  });
+});

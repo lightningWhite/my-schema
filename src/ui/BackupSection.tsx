@@ -4,7 +4,7 @@
  * "commit" in the normal path.
  */
 import { useState } from 'react';
-import { connectWithToken, createBackupUrl, signInAvailable, startInstall, startSignIn } from '../app/auth';
+import { createBackupUrl, signInAvailable, startInstall, startSignIn } from '../app/auth';
 import { syncService, useSyncStatus } from '../app/syncService';
 import { relativeDate } from './format';
 
@@ -45,8 +45,7 @@ function SignedOut() {
         Keep your schema safe, and the same on your phone and your computer. It's saved in a private place in your own free GitHub account — only
         you can see it.
       </p>
-      {status.signingIn && <p className="notice">Finishing sign-in…</p>}
-      {status.signInError && <p className="warning">{status.signInError}</p>}
+      <SetupStatus />
       {signInAvailable ? (
         <>
           <ol className="setup-steps">
@@ -111,6 +110,47 @@ function SignedOut() {
   );
 }
 
+/**
+ * While finishing setup: "waiting for GitHub" progress, or what's missing with
+ * a button for exactly that.
+ */
+function SetupStatus() {
+  const s = useSyncStatus();
+  if (s.signingIn) {
+    return (
+      <p className="notice">
+        {s.waitingForGitHub
+          ? 'Finishing setup with GitHub… This can take up to a minute right after installing. You can leave this open.'
+          : 'Finishing sign-in…'}
+      </p>
+    );
+  }
+  if (!s.signInError) return null;
+  const problem = s.setupProblem;
+  const checkAgain = async () => {
+    if (!(await syncService.checkAgain())) await startSignIn();
+  };
+  return (
+    <div className="warning setup-problem">
+      <p>{s.signInError}</p>
+      {problem && (
+        <div className="button-row">
+          {problem.kind === 'repo-not-chosen' && (
+            <a className="button small primary" href={problem.settingsUrl} target="_blank" rel="noreferrer">
+              Choose schema-private on GitHub
+            </a>
+          )}
+          {problem.kind !== 'not-installed' && (
+            <button className="button small" onClick={() => void checkAgain()}>
+              Check again
+            </button>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function TokenConnect({ open }: { open: boolean }) {
   const [token, setToken] = useState('');
   const [busy, setBusy] = useState(false);
@@ -131,12 +171,9 @@ function TokenConnect({ open }: { open: boolean }) {
           e.preventDefault();
           if (!token.trim()) return;
           setBusy(true);
-          syncService.reportSignInError(undefined);
           try {
-            await syncService.connect(await connectWithToken(token));
+            await syncService.connectToken(token);
             setToken('');
-          } catch (err) {
-            syncService.reportSignInError(err instanceof Error ? err.message : String(err));
           } finally {
             setBusy(false);
           }

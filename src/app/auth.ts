@@ -14,7 +14,6 @@
  *   VITE_GITHUB_APP_SLUG   the app's URL name, as in github.com/apps/<slug>
  *   VITE_AUTH_URL          the Worker's address
  */
-import type { GitHubAccount } from '../sync/github';
 
 const CLIENT_ID = import.meta.env.VITE_GITHUB_CLIENT_ID as string | undefined;
 const APP_SLUG = import.meta.env.VITE_GITHUB_APP_SLUG as string | undefined;
@@ -111,10 +110,10 @@ export async function startSignIn(): Promise<void> {
 
 /**
  * If GitHub just sent the person back here (from installing or signing in),
- * finish connecting. Returns null if this isn't such a return. Throws with a
+ * get their token. Returns null if this isn't such a return. Throws with a
  * plain-language message if it didn't work out.
  */
-export async function finishSignInIfReturning(): Promise<GitHubAccount | null> {
+export async function finishSignInIfReturning(): Promise<{ token: string; fromInstall: boolean } | null> {
   const params = new URLSearchParams(location.search);
   const code = params.get('code');
   const state = params.get('state');
@@ -147,12 +146,5 @@ export async function finishSignInIfReturning(): Promise<GitHubAccount | null> {
   } catch {
     throw new Error("Couldn't finish signing in with GitHub. Please try again.");
   }
-  const { GitHubStore } = await import('../sync/github');
-  return GitHubStore.connect(token);
-}
-
-/** The advanced path: connect with a personal access token. */
-export async function connectWithToken(token: string): Promise<GitHubAccount> {
-  const { GitHubStore } = await import('../sync/github');
-  return GitHubStore.connect(token.trim());
+  return { token, fromInstall };
 }

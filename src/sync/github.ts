@@ -9,6 +9,8 @@ import { AuthError, BackupError, StaleError, type BackupStore, type Listing } fr
 export const REPO_NAME = 'schema-private';
 const REF_RETRIES = 3;
 const REF_RETRY_DELAY = 700;
+/** Tries before trusting a clear "not installed" / "not chosen" answer (~30 s). */
+const CLEAR_ANSWER_ATTEMPTS = 5;
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 export const REPO_DESCRIPTION = 'My Schema backup: tidbits I keep, revise and come back to.';
 const README = `# My Schema backup
@@ -18,13 +20,46 @@ your tidbits: one Markdown file per tidbit in \`tidbits/\`. Only you can see it.
 The app keeps it up to date; you don't need to do anything here.
 `;
 
-/** The person still has a step to do on GitHub: create the backup, or share it with Schema. */
+/** Why Schema can't reach the backup yet, as best GitHub can tell us. */
+export type SetupProblem =
+  /** The Schema app isn't installed on the person's account. */
+  | { kind: 'not-installed' }
+  /** Installed, but schema-private wasn't one of the repositories chosen. */
+  | { kind: 'repo-not-chosen'; settingsUrl: string }
+  /** Installed with schema-private chosen; GitHub just hasn't caught up yet. */
+  | { kind: 'not-visible-yet' }
+  /** Can't tell (e.g. a personal access token). */
+  | { kind: 'unknown' };
+
+const SETUP_MESSAGES: Record<SetupProblem['kind'], string> = {
+  'not-installed': "Schema isn't connected to your GitHub yet. Tap “Connect Schema to my backup” (step 2).",
+  'repo-not-chosen':
+    "Schema is connected, but wasn't given your schema-private backup. Tap “Choose schema-private on GitHub”, tick schema-private, save, then come back and tap “Check again”.",
+  'not-visible-yet': 'GitHub is still finishing setting things up. This usually takes under a minute — tap “Check again” shortly.',
+  unknown:
+    "Schema can't see your schema-private backup yet. Make sure both steps are done; if you just did them, wait a minute and tap “Check again”.",
+};
+
+/** The person (or GitHub) still has a step to finish before Schema can reach the backup. */
 export class SetupNeededError extends Error {
-  constructor() {
-    super(
-      "Schema can't see your schema-private backup yet. Make sure you've created it on GitHub (step 1), and picked it when connecting Schema (step 2).",
-    );
+  constructor(public readonly problem: SetupProblem = { kind: 'unknown' }) {
+    super(SETUP_MESSAGES[problem.kind]);
   }
+}
+
+export interface ConnectOptions {
+  fetch?: Fetch;
+  /**
+   * Keep trying for a while even if GitHub says the app isn't installed or the
+   * repo isn't chosen. Right after installing, GitHub can take a minute to
+   * catch up, and its answers in the meantime can be wrong.
+   */
+  patient?: boolean;
+  /** How many tries, and how long between them (defaults: ~90 seconds in all). */
+  attempts?: number;
+  delayMs?: number;
+  /** Called when the first try fails and we start waiting for GitHub. */
+  onWaiting?: () => void;
 }
 const API = 'https://api.github.com';
 
@@ -95,6 +130,56 @@ export class GitHubStore implements BackupStore {
       });
     }
     return { token, login: user.login, owner, repo: repo.name, branch };
+  }
+
+  /**
+   * Connect, waiting for GitHub to catch up after the app was just installed.
+   * Gives up with a SetupNeededError saying what's actually missing.
+   */
+  static async connectWhenReady(token: string, opts: ConnectOptions = {}): Promise<GitHubAccount> {
+    const fetchImpl = opts.fetch ?? fetch.bind(globalThis);
+    const attempts = opts.attempts ?? 12;
+    const delayMs = opts.delayMs ?? 7500;
+    let problem: SetupProblem = { kind: 'unknown' };
+    for (let i = 0; i < attempts; i++) {
+      try {
+        return await GitHubStore.connect(token, fetchImpl);
+      } catch (e) {
+        if (!(e instanceof SetupNeededError)) throw e;
+      }
+      problem = await GitHubStore.diagnose(token, fetchImpl);
+      // Only waiting can fix "not visible yet". Right after installing, any
+      // answer may be stale, so wait then too — but less long when GitHub's
+      // answer is a clear "not installed" or "not chosen", so people aren't
+      // left watching a spinner when they have something to fix.
+      const clearAnswer = problem.kind === 'not-installed' || problem.kind === 'repo-not-chosen';
+      const limit = clearAnswer ? Math.min(attempts, CLEAR_ANSWER_ATTEMPTS) : attempts;
+      const worthWaiting = opts.patient || problem.kind === 'not-visible-yet';
+      if (!worthWaiting || i >= limit - 1) break;
+      if (i === 0) opts.onWaiting?.();
+      await sleep(delayMs);
+    }
+    throw new SetupNeededError(problem);
+  }
+
+  /** Ask GitHub why the backup isn't reachable: not installed, repo not chosen, or not yet visible. */
+  static async diagnose(token: string, fetchImpl: Fetch = fetch.bind(globalThis)): Promise<SetupProblem> {
+    const api = (path: string) => call(fetchImpl, token, path);
+    try {
+      const user = (await api('/user')) as { login: string };
+      const { installations } = (await api('/user/installations')) as {
+        installations: Array<{ id: number; account: { login: string } }>;
+      };
+      const mine = installations.find((i) => i.account.login.toLowerCase() === user.login.toLowerCase());
+      if (!mine) return { kind: 'not-installed' };
+      const { repositories } = (await api(`/user/installations/${mine.id}/repositories?per_page=100`)) as {
+        repositories: Array<{ name: string }>;
+      };
+      if (repositories.some((r) => r.name === REPO_NAME)) return { kind: 'not-visible-yet' };
+      return { kind: 'repo-not-chosen', settingsUrl: `https://github.com/settings/installations/${mine.id}` };
+    } catch {
+      return { kind: 'unknown' }; // e.g. personal access tokens can't list installations
+    }
   }
 
   private api(path: string, init?: RequestInit) {
