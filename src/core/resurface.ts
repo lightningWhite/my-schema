@@ -1,5 +1,5 @@
 /**
- * Passing reminders: the strip of past tidbits drifting along the bottom of the
+ * Passing reminders: the strip of past tidbits drifting along the top of the
  * home screen (docs/design.md §4.3). Unlike Review, nothing is asked of you and
  * nothing is recorded; a tidbit just passes by in case it catches your eye.
  *

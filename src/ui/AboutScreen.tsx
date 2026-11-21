@@ -58,7 +58,7 @@ export function AboutScreen() {
             The more often you reaffirm one, the less often it returns — but values and practices never drift away entirely.
           </dd>
           <dt>In passing</dt>
-          <dd>Past tidbits drift along the bottom of the home screen, in case one catches your eye. No need to do anything with them.</dd>
+          <dd>Past tidbits drift along the top of the home screen, in case one catches your eye. No need to do anything with them.</dd>
           <dt>Your schema</dt>
           <dd>Browse everything by category and kind, search it, and see each tidbit's history.</dd>
         </dl>

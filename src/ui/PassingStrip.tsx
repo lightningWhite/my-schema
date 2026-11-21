@@ -1,9 +1,9 @@
 /**
- * A quiet strip of past tidbits drifting along the bottom of the home screen.
+ * A quiet strip of past tidbits drifting along the top of the home screen.
  * Not a review: nothing to answer, nothing recorded. Pauses on hover or touch;
  * tap a tidbit to open it. Holds still for people who prefer reduced motion.
  */
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { href } from '../app/hooks';
 import { displayTitle } from '../core/tidbit';
 import { KIND_INFO } from '../core/kinds';
@@ -27,6 +27,23 @@ export function PassingStrip({ tidbits, now, quiet, exclude }: { tidbits: Tidbit
     const byId = new Map(tidbits.map((g) => [g.id, g]));
     return (ids ?? []).map((id) => byId.get(id)).filter((g): g is Tidbit => !!g && g.status === 'active');
   }, [ids, tidbits]);
+
+  // Some mobile browsers scroll the page under the keyboard rather than
+  // shrinking it; keep the strip pinned to the top of what's actually visible.
+  useEffect(() => {
+    const vv = window.visualViewport;
+    if (!vv) return;
+    const root = document.documentElement;
+    const update = () => root.style.setProperty('--vv-top', `${Math.max(0, vv.offsetTop)}px`);
+    update();
+    vv.addEventListener('resize', update);
+    vv.addEventListener('scroll', update);
+    return () => {
+      vv.removeEventListener('resize', update);
+      vv.removeEventListener('scroll', update);
+      root.style.removeProperty('--vv-top');
+    };
+  }, []);
 
   if (items.length < 2) return null;
 

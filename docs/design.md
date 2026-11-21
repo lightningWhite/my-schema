@@ -363,7 +363,7 @@ A static PWA can't reliably schedule its own notifications. Plan:
 
 ### 4.3 In passing
 
-Review is deliberate; some reminding should be effortless. Along the bottom of
+Review is deliberate; some reminding should be effortless. Along the top of
 the home screen, a thin strip of past tidbits drifts slowly by, in case one
 catches your eye while you're there to capture something new. Nothing is
 asked and nothing is recorded — it is not a review.
@@ -371,7 +371,7 @@ asked and nothing is recorded — it is not a review.
 - Active tidbits only, picked at random but weighted toward ones you haven't
   touched in a while (pure function in core, randomness injected).
 - Picked once per visit, so it doesn't reshuffle as you save.
-- Quiet by design: low contrast, fades further while you type, pauses on hover
+- Quiet by design: low contrast, fades a little while you type, and sits at the top of the screen so it stays visible above the keyboard, pauses on hover
   or touch, tap a tidbit to open it. Holds still (scroll by hand) when the
   device asks for reduced motion. Hidden until there are at least three tidbits.
 

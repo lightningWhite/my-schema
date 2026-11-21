@@ -1271,12 +1271,16 @@ kbd {
   z-index: 5;
   left: 0;
   right: 0;
-  bottom: calc(var(--tab-h) + env(safe-area-inset-bottom));
-  height: var(--passing-h);
+  /* At the top, so it stays in view while the on-screen keyboard is up.
+     --vv-top follows the visible area if the browser scrolls under the keyboard. */
+  top: 0;
+  transform: translateY(var(--vv-top, 0px));
+  height: calc(var(--passing-h) + env(safe-area-inset-top));
+  padding-top: env(safe-area-inset-top);
   overflow: hidden;
   display: flex;
   align-items: center;
-  border-top: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
   background: color-mix(in srgb, var(--bg) 85%, transparent);
   backdrop-filter: blur(8px);
   /* Soft edges, so tidbits drift in and out rather than appearing at a hard line. */
@@ -1285,7 +1289,7 @@ kbd {
   transition: opacity 0.4s;
 }
 .passing.quiet {
-  opacity: 0.3;
+  opacity: 0.55;
 }
 .passing:hover,
 .passing:focus-within {
@@ -1294,7 +1298,6 @@ kbd {
 @media (min-width: 760px) {
   .passing {
     left: 88px;
-    bottom: 0;
   }
 }
 
@@ -1369,7 +1372,7 @@ kbd {
 }
 
 .screen.capture.has-passing {
-  padding-bottom: 56px;
+  padding-top: 56px;
 }
 
 .tagline a {
