@@ -93,13 +93,14 @@ export function AboutScreen() {
       <section>
         <h2>Your data</h2>
         <p>
-          Your tidbits live on this device. There's no account, no server, no tracking. Export a backup from Settings any time — it's a zip of plain
-          Markdown files you can read without the app.
+          Your tidbits live on this device. There's no Schema account and no tracking, and we never see your tidbits. Export a copy from Settings any
+          time — it's a zip of plain Markdown files you can read without the app.
         </p>
-        <p className="muted">
-          Coming next: syncing to your own private GitHub repository, so your schema is backed up and on every device. Later, optionally, sharing
-          some tidbits and planting other people's in yours.
+        <p>
+          To keep it safe and the same on all your devices, sign in with GitHub in Settings. Your tidbits are saved in a private place in your own
+          free GitHub account that only you can see, and they sync on their own from then on.
         </p>
+        <p className="muted">Coming later, if you want it: sharing some tidbits, and planting other people's in yours.</p>
       </section>
 
       <p className="about-foot">

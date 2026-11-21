@@ -1,0 +1,97 @@
+/**
+ * One sync pass: list the backup, fetch what changed, plan with the pure core
+ * planner, write the backup (one atomic change), then update this device.
+ *
+ * Order matters for safety: the backup is written first, and this device is
+ * only updated after that succeeds. Tidbits edited on this device while the
+ * sync was in flight are left alone and picked up by the next pass.
+ */
+import { serializeTidbit } from '../core/format';
+import { mergeReview, planSync, type Files } from '../core/sync';
+import type { SchemaDB } from '../store/db';
+import { StaleError, type BackupStore } from './store';
+
+export interface SyncResult {
+  uploaded: number;
+  downloaded: number;
+  /** Local edits made during the sync that still need a pass. */
+  pending: boolean;
+  errors: Array<{ path: string; error: string }>;
+}
+
+const MAX_ATTEMPTS = 4;
+
+export async function syncOnce(db: SchemaDB, store: BackupStore, now: () => string): Promise<SyncResult> {
+  for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
+    const { head, files } = await store.list();
+    const baseRows = await db.syncBase.toArray();
+    const baseById = new Map(baseRows.map((r) => [r.path, r]));
+
+    // The backup's files, downloading only those that changed since the base.
+    const remote: Files = new Map();
+    let downloaded = 0;
+    for (const [path, id] of files) {
+      if (!isSchemaFile(path)) continue;
+      const b = baseById.get(path);
+      if (b && b.id === id) remote.set(path, b.text);
+      else {
+        remote.set(path, await store.read(path, id));
+        if (path.startsWith('tidbits/')) downloaded++;
+      }
+    }
+    const base: Files = new Map(baseRows.map((r) => [r.path, r.text]));
+
+    // This device, as of now.
+    const local = await db.tidbits.toArray();
+    const localReview = await db.getReview();
+    const snapshot = new Map(local.map((t) => [t.id, serializeTidbit(t)]));
+
+    const plan = planSync({ local, localReview, remote, base });
+
+    let listing = files;
+    if (plan.writes.size || plan.deletes.length) {
+      try {
+        const n = [...plan.writes.keys()].filter((p) => p.startsWith('tidbits/')).length + plan.deletes.length;
+        ({ files: listing } = await store.write(head, plan.writes, plan.deletes, `Sync ${n} tidbit${n === 1 ? '' : 's'} · ${now()}`));
+      } catch (e) {
+        if (e instanceof StaleError) continue; // another device synced first: start over
+        throw e;
+      }
+    }
+
+    // Update this device, skipping anything edited here mid-sync.
+    let pending = false;
+    await db.transaction('rw', db.tidbits, db.kv, db.syncBase, async () => {
+      const current = new Map((await db.tidbits.toArray()).map((t) => [t.id, t]));
+      const untouched = (id: string) => {
+        const before = snapshot.get(id);
+        const cur = current.get(id);
+        const same = before === undefined ? cur === undefined : cur !== undefined && serializeTidbit(cur) === before;
+        if (!same) pending = true;
+        return same;
+      };
+      const keep = new Set(plan.tidbits.map((t) => t.id));
+      const puts = plan.tidbits.filter((t) => untouched(t.id) && (snapshot.get(t.id) !== serializeTidbit(t)));
+      const dels = [...snapshot.keys()].filter((id) => !keep.has(id) && untouched(id));
+      if (puts.length) await db.tidbits.bulkPut(puts);
+      if (dels.length) await db.tidbits.bulkDelete(dels);
+      // Reviews done mid-sync are kept: merge with whatever is here now.
+      await db.setReview(mergeReview(plan.review, await db.getReview()));
+
+      await db.syncBase.clear();
+      await db.syncBase.bulkPut(
+        [...plan.next].filter(([path]) => listing.has(path)).map(([path, text]) => ({ path, id: listing.get(path)!, text })),
+      );
+      const account = await db.getSyncAccount();
+      if (account) await db.setSyncAccount({ ...account, lastSyncAt: now() });
+    });
+
+    const uploaded = [...plan.writes.keys()].filter((p) => p.startsWith('tidbits/')).length + plan.deletes.length;
+    return { uploaded, downloaded, pending, errors: plan.errors };
+  }
+  throw new Error('The backup kept changing while syncing. Will try again shortly.');
+}
+
+function isSchemaFile(path: string): boolean {
+  return /^tidbits\/[^/]+\.md$/.test(path) || path === 'review.json' || path === 'manifest.json' || path === 'index.json';
+}

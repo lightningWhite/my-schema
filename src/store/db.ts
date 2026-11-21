@@ -19,13 +19,33 @@ export interface Settings {
 export const DEFAULT_SETTINGS: Settings = { reviewSize: 5 };
 
 interface KV {
-  key: 'review' | 'manifest' | 'settings';
+  key: 'review' | 'manifest' | 'settings' | 'sync';
   value: unknown;
+}
+
+/** One file as of the last successful sync: the base for three-way merges. */
+export interface BaseFile {
+  path: string;
+  /** Content id in the backup (git blob SHA). */
+  id: string;
+  text: string;
+}
+
+/** Which backup this device syncs with, and how it went last time. */
+export interface SyncAccount {
+  provider: 'github';
+  token: string;
+  login: string;
+  owner: string;
+  repo: string;
+  branch: string;
+  lastSyncAt?: string;
 }
 
 export class SchemaDB extends Dexie {
   tidbits!: EntityTable<Tidbit, 'id'>;
   kv!: EntityTable<KV, 'key'>;
+  syncBase!: EntityTable<BaseFile, 'path'>;
 
   /**
    * The database keeps its original name ('seedbank') from before the app was
@@ -53,6 +73,7 @@ export class SchemaDB extends Dexie {
         if (old.length) await tx.table('tidbits').bulkPut(old);
       });
     this.version(5).stores({ grains: null });
+    this.version(6).stores({ syncBase: '&path' });
   }
 
   async getReview(): Promise<ReviewState> {
@@ -69,6 +90,15 @@ export class SchemaDB extends Dexie {
 
   async setManifest(m: Manifest): Promise<void> {
     await this.kv.put({ key: 'manifest', value: m });
+  }
+
+  async getSyncAccount(): Promise<SyncAccount | null> {
+    return ((await this.kv.get('sync'))?.value as SyncAccount | undefined) ?? null;
+  }
+
+  async setSyncAccount(a: SyncAccount | null): Promise<void> {
+    if (a) await this.kv.put({ key: 'sync', value: a });
+    else await this.kv.delete('sync');
   }
 
   async getSettings(): Promise<Settings> {

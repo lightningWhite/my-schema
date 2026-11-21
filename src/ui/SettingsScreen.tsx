@@ -4,6 +4,9 @@ import { useTidbits, useSettings } from '../app/hooks';
 import { allCategories } from '../core/categories';
 import type { Appearance, Style, Theme } from '../app/theme';
 import { plural } from './format';
+import { BackupSection } from './BackupSection';
+import { useNow } from '../app/hooks';
+import { useSyncStatus } from '../app/syncService';
 
 const STYLES: Array<{ id: Style; name: string; hint: string }> = [
   { id: 'focus', name: 'Focus', hint: 'Cool and crisp. For thinking in systems.' },
@@ -18,6 +21,8 @@ const APPEARANCES: Array<{ id: Appearance; name: string }> = [
 export function SettingsScreen({ theme, onTheme }: { theme: Theme; onTheme: (t: Theme) => void }) {
   const settings = useSettings();
   const tidbits = useTidbits() ?? [];
+  const now = useNow();
+  const backedUp = useSyncStatus().state !== 'off';
   const fileRef = useRef<HTMLInputElement>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [persisted, setPersisted] = useState<boolean | null>(null);
@@ -41,6 +46,8 @@ export function SettingsScreen({ theme, onTheme }: { theme: Theme; onTheme: (t: 
       <header className="screen-header">
         <h1>Settings</h1>
       </header>
+
+      <BackupSection now={now} />
 
       <section className="settings-section">
         <h2>Style</h2>
@@ -104,10 +111,11 @@ export function SettingsScreen({ theme, onTheme }: { theme: Theme; onTheme: (t: 
       <section className="settings-section">
         <h2>Your data</h2>
         <p className="muted">
-          Your {plural(tidbits.length, 'tidbit')} live on this device only, until GitHub sync arrives. Export now and then to keep a backup — the zip
-          holds one readable Markdown file per tidbit.
+          {backedUp
+            ? `Your ${plural(tidbits.length, 'tidbit')} ${tidbits.length === 1 ? 'is' : 'are'} on this device and backed up to GitHub. You can also export a copy — a zip with one readable Markdown file per tidbit.`
+            : `Your ${plural(tidbits.length, 'tidbit')} ${tidbits.length === 1 ? 'lives' : 'live'} on this device only. Sign in above to back them up, or export now and then — the zip holds one readable Markdown file per tidbit.`}
         </p>
-        {persisted === false && (
+        {persisted === false && !backedUp && (
           <p className="warning">
             This browser may clear the schema if the device runs low on space.{' '}
             <button className="link-button" onClick={async () => setPersisted((await navigator.storage?.persist?.()) ?? false)}>
@@ -159,7 +167,6 @@ export function SettingsScreen({ theme, onTheme }: { theme: Theme; onTheme: (t: 
       <section className="settings-section">
         <h2>Coming next</h2>
         <ul className="muted">
-          <li>Sync to a private GitHub repo, so your schema is backed up and on every device.</li>
           <li>Publishing tidbits to a public schema, and planting other people's tidbits in yours.</li>
         </ul>
       </section>

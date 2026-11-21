@@ -1,6 +1,7 @@
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { App } from './app/App';
+import { syncService } from './app/syncService';
 import './ui/styles.css';
 
 createRoot(document.getElementById('root')!).render(
@@ -8,6 +9,9 @@ createRoot(document.getElementById('root')!).render(
     <App />
   </StrictMode>,
 );
+
+// Background sync with the person's backup, once they've connected one.
+void syncService.finishSignIn().then(() => syncService.start());
 
 // Offline support. Only in production builds: in dev the service worker
 // would serve stale modules.

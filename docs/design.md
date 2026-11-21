@@ -249,20 +249,73 @@ at any time.
 
 ### 3.4 Talking to GitHub without a server
 
-- **Auth (v1):** the user pastes a *fine-tidbited personal access token* scoped
-  to just their two Schema repos (Contents: read/write). The setup screen
-  walks them through creating it. The token is stored on the device only.
-- **Reading your own schema:** one GraphQL query fetches the whole `tidbits/` tree
-  with blob text, so a first sync is a single request even for hundreds of
-  tidbits. After that, compare blob SHAs and fetch only what changed.
-- **Writing:** the Git Data API (create blobs → tree → commit → move ref) makes
-  each save **one atomic commit** that updates the tidbit file(s) and
-  `index.json` together.
+**Goal: easy enough for anyone's grandmother.** Creating a free GitHub account
+is the one real step. After that, backup is one button and then invisible. The
+words "repository", "token", "commit" and "branch" never appear in the normal
+flow; the UI says "your private backup on GitHub".
+
+**Sign in (default).** Settings → *Back up & sync* → **Sign in with GitHub** →
+GitHub's own page → **Authorize** → back in the app, which finds or creates a
+private repo named `schema-private`, uploads everything, and syncs quietly from
+then on. A second device: same button, and it downloads what's there.
+
+- GitHub's sign-in still requires a client secret, and its token endpoint
+  doesn't accept browser (CORS) requests, so a pure static page can't finish
+  sign-in alone. A **tiny Cloudflare Worker** (`worker/`, free tier) does only
+  the code→token exchange: it holds the client secret, allows only the app's
+  origin, stores and logs nothing, and never sees tidbits. PKCE is used too.
+- It's a classic **OAuth App** with the `repo` scope. A GitHub App would allow
+  narrower permissions, but GitHub Apps can't reliably create a repo in a
+  personal account, which would add manual steps. `repo` is broad (all of the
+  account's repos); for a new account with nothing else in it, that's moot.
+  People who want narrower access can use the token option below.
+- OAuth App tokens don't expire, so nobody gets signed out unexpectedly. The
+  token lives only on the device (IndexedDB). *Sign out of this device*
+  forgets it; revoking is done on GitHub.
+
+**Token (advanced).** For developers, or before the Worker is deployed: paste
+a fine-grained personal access token (Contents and Administration read/write,
+or Contents only on an existing `schema-private` repo).
+
+**Sync model.** State-based, not an outbox: each sync compares three
+versions of every file — this device, GitHub, and the **base** (what both
+agreed on at the last sync, stored locally) — and merges them with the core
+merge function (§3.5):
+
+- On both sides → three-way merge; upload if the result differs from GitHub.
+- Only here → new here (upload), or deleted on GitHub: deleted here too
+  unless it was edited here since (an edit beats a delete).
+- Only on GitHub → new there (download), or deleted here: deleted on GitHub
+  too unless it was edited there since.
+
+Reading: one tree listing per sync; only files whose blob SHA changed since
+the base are downloaded. Writing: one commit per sync (Git Data API: tree with
+inline contents → commit → move the branch ref with `force: false`). If
+another device moved the branch first, the sync starts over and merges again.
+`index.json` is regenerated in the same commit. `review.json` merges per
+tidbit (the most recently reviewed entry wins). A schema with a newer
+`formatVersion` is read but never written, and the app says to update.
+
+**When it syncs:** on open, when the device comes back online, when the app
+returns to the foreground, a few seconds after any change, and every few
+minutes while open. Sync never blocks the UI and never loses local work: the
+remote commit happens first, and local changes made mid-sync are merged on
+the next pass.
+
 - **Reading other people's public schemas:** fetch their `index.json` from
   `raw.githubusercontent.com` — no token, no API rate limit, one request per schema.
-- **Later:** a GitHub App plus a tiny OAuth exchange on a free Cloudflare Worker,
-  so non-technical users can sign in with a button instead of a token. That
-  worker would hold no user data.
+
+**Other backup services (later).** The sync engine talks to a small
+`BackupStore` interface (`src/sync/store.ts`): list files with content ids,
+read one, and write a batch only if nothing changed since listing. GitHub is
+the first implementation. **Google Drive** (the app-data folder, `drive.appdata`
+scope, which Google lets browser apps use without a server) and **Nextcloud**
+(WebDAV with an app password, where the server allows cross-origin requests)
+could implement the same interface for people who want backup without GitHub.
+They can't do atomic multi-file writes, so they'd use per-file conditional
+writes (ETags) instead. Sharing (§5) still needs a public GitHub repo, so
+choosing another backup simply means not sharing — or adding GitHub later
+just for that.
 
 ### 3.5 Conflicts
 
@@ -519,9 +572,9 @@ later.
 | Phase | Delivers | Useful because |
 |---|---|---|
 | **0 — Local** | PWA, capture, categories/tags, revise/dormant/succeed, history view, search, review loop. IndexedDB only, with export/import of a schema folder (zip of `.md` files). | Fully usable on one device, no GitHub needed. Proves the core loop. |
-| **1 — Sync** | Private schema on GitHub via PAT, background sync, multi-device merge. | Your schema is backed up and on every device. |
+| **1 — Sync** | Private schema on GitHub via one-click sign-in (OAuth App + tiny Worker) or a token; background sync; multi-device merge. | Your schema is backed up and on every device. |
 | **2 — Social** | Public schema, publish (with/without history), Explore, follow, plant, upstream lineage, partial downstream. | The sharing half of the idea. |
-| **3 — Polish** | Encryption, OAuth sign-in via Worker, Web Push reminders, share target, import from notes apps. | Opens it up to non-technical users. |
+| **3 — Polish** | Encryption, Web Push reminders, share target, import from notes apps. | Opens it up to non-technical users. |
 
 ---
 

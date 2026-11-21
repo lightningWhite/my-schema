@@ -22,7 +22,7 @@ describe('SchemaDB migration', () => {
     const db = new SchemaDB(name);
     expect((await db.tidbits.toArray()).sort((x, y) => x.id.localeCompare(y.id))).toEqual([a, b]);
     expect((await db.getSettings()).reviewSize).toBe(7);
-    expect(db.tables.map((t) => t.name).sort()).toEqual(['kv', 'tidbits']);
+    expect(db.tables.map((t) => t.name).sort()).toEqual(['kv', 'syncBase', 'tidbits']);
     db.close();
   });
 
@@ -41,7 +41,7 @@ describe('SchemaDB migration', () => {
 
     const db = new SchemaDB(name);
     expect(await db.tidbits.toArray()).toEqual([a]);
-    expect(db.tables.map((t) => t.name).sort()).toEqual(['kv', 'tidbits']);
+    expect(db.tables.map((t) => t.name).sort()).toEqual(['kv', 'syncBase', 'tidbits']);
     db.close();
   });
 

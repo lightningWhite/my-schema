@@ -1,0 +1,10 @@
+name = "schema-signin"
+main = "index.js"
+compatibility_date = "2025-06-01"
+
+[vars]
+# The address the app is served from (no trailing slash, no path).
+ALLOWED_ORIGIN = "https://lightningwhite.github.io"
+# GITHUB_CLIENT_ID and GITHUB_CLIENT_SECRET are set as secrets:
+#   npx wrangler secret put GITHUB_CLIENT_ID
+#   npx wrangler secret put GITHUB_CLIENT_SECRET

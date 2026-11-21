@@ -1519,3 +1519,39 @@ kbd {
   color: var(--ink-2);
   font-family: var(--meta-font);
 }
+
+/* ------------------------------------------------------------ backup */
+
+.backup p {
+  margin: 8px 0;
+}
+.github-button {
+  margin: 8px 0 4px;
+  gap: 10px;
+}
+.token-connect {
+  margin-top: 14px;
+  font-size: 0.92rem;
+}
+.token-connect summary {
+  cursor: pointer;
+  color: var(--ink-3);
+}
+.token-form {
+  display: flex;
+  gap: 8px;
+  margin-top: 8px;
+}
+.sync-status {
+  font-weight: 550;
+}
+.sync-line.ok {
+  color: var(--accent);
+}
+.sync-line.syncing,
+.sync-line.offline {
+  color: var(--ink-2);
+}
+.sync-line.error {
+  color: var(--danger);
+}

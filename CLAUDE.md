@@ -40,10 +40,11 @@ docs/          Design docs, read first
 src/
   core/        Pure domain logic
   store/       IndexedDB (Dexie): local cache + outbox
-  sync/        (Phase 1) GitHub adapter (GraphQL read, Git Data API commits, raw fetch)
+  sync/        Backup stores (GitHub; interface allows others) and the sync engine
   ui/          React screens
   app/         Wiring, routing, PWA registration
 public/        manifest, icons, service worker
+worker/        Cloudflare Worker for GitHub sign-in (code→token only; stores nothing)
 ```
 
 ## Conventions

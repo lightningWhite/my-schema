@@ -7,6 +7,11 @@ import react from '@vitejs/plugin-react';
 export default defineConfig({
   base: './',
   plugins: [react()],
+  build: {
+    // The startup bundle is React + Dexie + the YAML parser (~155 kB gzipped).
+    // Export/import and sync load on demand. Raise this deliberately, not casually.
+    chunkSizeWarningLimit: 560,
+  },
   test: {
     include: ['src/**/*.test.ts'],
   },

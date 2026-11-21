@@ -21,6 +21,11 @@ jobs:
       - run: npm ci
       - run: npm test
       - run: npm run build
+        env:
+          # One-click sign-in (see worker/README.md). Without these the app
+          # still works; Settings offers the token option instead.
+          VITE_GITHUB_CLIENT_ID: ${{ vars.SIGNIN_CLIENT_ID }}
+          VITE_AUTH_URL: ${{ vars.SIGNIN_URL }}
       - uses: actions/upload-pages-artifact@v3
         if: github.ref == 'refs/heads/main'
         with:

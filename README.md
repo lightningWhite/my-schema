@@ -26,9 +26,8 @@ to where each one came from.
 Two styles — **Focus** (cool, crisp) and **Reflect** (warm, soft) — each in
 light and dark.
 
-> **Status: Phase 0 (local).** Capture, sort, review, revise / retire /
-> succeed, history, search and export/import all work on one device. GitHub
-> sync and sharing come next. The design is in [`docs/design.md`](docs/design.md).
+> **Status: Phase 1 (sync).** Everything works on one device, and sync to a
+> private GitHub repo keeps devices in step. Sharing comes next. The design is in [`docs/design.md`](docs/design.md).
 
 ## Development
 
