@@ -62,8 +62,13 @@ class SyncService {
     window.addEventListener('online', () => this.request(0));
     window.addEventListener('offline', () => this.status.state !== 'off' && this.set({ state: 'offline' }));
     document.addEventListener('visibilitychange', () => document.visibilityState === 'visible' && this.request(0));
-    const account = await db.getSyncAccount();
-    if (account) this.activate(account);
+    // Follow the account across tabs: on phones, signing in often finishes in
+    // another tab (GitHub returns to the browser, not the home-screen app).
+    // Dexie's liveQuery sees writes from every tab of this app.
+    liveQuery(() => db.getSyncAccount()).subscribe((account) => {
+      if (account && this.status.state === 'off') this.activate(account);
+      else if (!account && this.status.state !== 'off') this.teardown();
+    });
   }
 
   private activate(account: SyncAccount) {
@@ -111,11 +116,15 @@ class SyncService {
 
   /** Forget the sign-in on this device. Tidbits stay here, and in the backup. */
   async disconnect() {
+    this.teardown();
+    await db.setSyncAccount(null);
+    await db.syncBase.clear();
+  }
+
+  private teardown() {
     this.sub?.unsubscribe();
     clearInterval(this.interval);
     clearTimeout(this.timer);
-    await db.setSyncAccount(null);
-    await db.syncBase.clear();
     this.status = { state: 'off' };
     this.listeners.forEach((fn) => fn());
   }

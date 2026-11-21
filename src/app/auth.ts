@@ -20,6 +20,41 @@ const CLIENT_ID = import.meta.env.VITE_GITHUB_CLIENT_ID as string | undefined;
 const APP_SLUG = import.meta.env.VITE_GITHUB_APP_SLUG as string | undefined;
 const AUTH_URL = import.meta.env.VITE_AUTH_URL as string | undefined;
 const PENDING = 'schema.signin';
+const PENDING_MAX_AGE = 30 * 60_000;
+
+interface Pending {
+  state: string;
+  verifier: string | null;
+  at: number;
+}
+
+/**
+ * The "this sign-in is really yours" marker. Kept in localStorage, not
+ * sessionStorage: on phones, GitHub often sends people back into a different
+ * tab than the one they left from (e.g. from the home-screen app into the
+ * browser), and sessionStorage is per tab.
+ */
+function savePending(state: string, verifier: string | null) {
+  try {
+    localStorage.setItem(PENDING, JSON.stringify({ state, verifier, at: Date.now() } satisfies Pending));
+  } catch {
+    sessionStorage.setItem(PENDING, JSON.stringify({ state, verifier, at: Date.now() } satisfies Pending));
+  }
+}
+
+function takePending(): Pending | null {
+  let raw: string | null = null;
+  try {
+    raw = localStorage.getItem(PENDING);
+    localStorage.removeItem(PENDING);
+  } catch {
+    // fall through to sessionStorage
+  }
+  raw ??= sessionStorage.getItem(PENDING);
+  sessionStorage.removeItem(PENDING);
+  const p = raw ? (JSON.parse(raw) as Pending) : null;
+  return p && Date.now() - p.at < PENDING_MAX_AGE ? p : null;
+}
 
 /** Whether one-click sign-in is set up in this build. */
 export const signInAvailable = !!(CLIENT_ID && AUTH_URL && APP_SLUG);
@@ -54,7 +89,7 @@ export function createBackupUrl(): string {
 export function startInstall(): void {
   if (!signInAvailable) throw new Error('Sign-in is not set up in this copy of the app.');
   const state = random(16);
-  sessionStorage.setItem(PENDING, JSON.stringify({ state, verifier: null }));
+  savePending(state, null);
   location.assign(`https://github.com/apps/${APP_SLUG}/installations/new?state=${state}`);
 }
 
@@ -64,7 +99,7 @@ export async function startSignIn(): Promise<void> {
   const verifier = random(32);
   const state = random(16);
   const challenge = base64url(new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(verifier))));
-  sessionStorage.setItem(PENDING, JSON.stringify({ state, verifier }));
+  savePending(state, verifier);
   const url = new URL('https://github.com/login/oauth/authorize');
   url.searchParams.set('client_id', CLIENT_ID!);
   url.searchParams.set('redirect_uri', redirectUri());
@@ -89,8 +124,7 @@ export async function finishSignInIfReturning(): Promise<GitHubAccount | null> {
 
   // Clean the address bar either way.
   history.replaceState(null, '', redirectUri() + location.hash);
-  const pending = JSON.parse(sessionStorage.getItem(PENDING) ?? 'null') as { state: string; verifier: string | null } | null;
-  sessionStorage.removeItem(PENDING);
+  const pending = takePending();
 
   if (error) throw new Error(error === 'access_denied' ? 'Sign-in was cancelled.' : 'GitHub sign-in did not finish. Please try again.');
   if (!code) throw new Error('Almost there — tap "Sign in with GitHub" to finish connecting.');

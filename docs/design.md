@@ -289,6 +289,11 @@ Another device: **Just sign in with GitHub** (OAuth web flow with PKCE).
   forgets it; uninstalling the app on GitHub revokes it everywhere.
 - If the repo is missing or not shared, connecting says so in plain words and
   the two steps stay on screen.
+- On phones, GitHub usually returns people into a different tab than they
+  left from (from the home-screen app into the browser). So the sign-in
+  marker lives in localStorage (expires after 30 minutes), and every open
+  copy of the app follows the stored account live, switching to "Backed up"
+  the moment any tab finishes connecting.
 
 **Token (advanced).** For developers, or before the Worker is deployed: paste
 a fine-grained personal access token (Contents and Administration read/write,
