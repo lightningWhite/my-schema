@@ -52,13 +52,24 @@ function SignedOut() {
           <ol className="setup-steps">
             <li className={created ? 'done' : ''}>
               <strong>Create your private backup.</strong>
-              <span>
-                GitHub opens with everything filled in. Tap <em>Create repository</em> at the bottom, then come back here. No GitHub account yet?
-                GitHub will offer to make one first — it's free.
-              </span>
-              <a className="button github-button" href={createBackupUrl()} target="_blank" rel="noreferrer" onClick={markCreated}>
-                <GitHubMark /> {created ? 'Open it again' : 'Create my backup on GitHub'}
-              </a>
+              {created ? (
+                <span>
+                  Done. If GitHub said the name <em>already exists</em>, that's fine — your backup is already there. Go on to step 2.{' '}
+                  <a href={createBackupUrl()} target="_blank" rel="noreferrer">
+                    Didn't finish? Open GitHub again
+                  </a>
+                </span>
+              ) : (
+                <>
+                  <span>
+                    GitHub opens with everything filled in. Tap <em>Create repository</em> at the bottom, then come back here. No GitHub account
+                    yet? GitHub will offer to make one first — it's free.
+                  </span>
+                  <a className="button github-button" href={createBackupUrl()} target="_blank" rel="noreferrer" onClick={markCreated}>
+                    <GitHubMark /> Create my backup on GitHub
+                  </a>
+                </>
+              )}
             </li>
             <li>
               <strong>Let Schema use it.</strong>
