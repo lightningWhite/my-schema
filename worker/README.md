@@ -16,8 +16,8 @@ You need a GitHub account (you have one) and a free Cloudflare account.
    (https://github.com/settings/applications/new).
 2. Fill in:
    - **Application name:** `Schema`
-   - **Homepage URL:** `https://lightningwhite.github.io/seedbank/`
-     (or `/schema/` if you renamed the repo)
+   - **Homepage URL:** `https://lightningwhite.github.io/my-schema/`
+     (the app's address; it follows the repo's name)
    - **Authorization callback URL:** the same address as the homepage.
 3. Click **Register application**.
 4. Copy the **Client ID**. Then click **Generate a new client secret** and copy

@@ -6,7 +6,7 @@ import worker from '../../worker/index.js';
 const env = { GITHUB_CLIENT_ID: 'id', GITHUB_CLIENT_SECRET: 'secret', ALLOWED_ORIGIN: 'https://app.example' };
 const post = (body: unknown, origin = 'https://app.example') =>
   new Request('https://signin.example/', { method: 'POST', headers: { Origin: origin, 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
-const good = { code: 'c', code_verifier: 'v', redirect_uri: 'https://app.example/seedbank/' };
+const good = { code: 'c', code_verifier: 'v', redirect_uri: 'https://app.example/my-schema/' };
 
 afterEach(() => vi.unstubAllGlobals());
 
