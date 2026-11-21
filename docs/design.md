@@ -452,8 +452,18 @@ asked and nothing is recorded — it is not a review.
 
 ### 5.1 Discovery
 
-- Public schemas carry the GitHub topic `personal-schema`. The Explore screen lists them
-  via GitHub's repo search (`topic:personal-schema`).
+**Principle: low friction beats everything here.** The Schema GitHub App
+asks for *Contents* only, and nobody is ever asked to change settings on
+GitHub. Sharing is set up the same way as the private backup: create the
+public repo from a pre-filled page, then tick it in Schema's access on
+GitHub. Anything that would need a broader permission (e.g. *Administration*
+to set repo topics) is out; changing the app's permissions later would also
+make every existing user re-approve it.
+
+- Finding public schemas therefore can't rely on repo topics. Options, to
+  decide when building Phase 2: code search for Schema's `manifest.json` in
+  public repos named `schema`; a simple opt-in directory (a public list the
+  app reads); or just sharing a link to someone's schema.
 - Following a schema adds it to `following.json`; the app polls followed schemas'
   `index.json` for new and revised tidbits.
 - Browsing filters: kind, category, recently revised, most planted (see §5.3).
