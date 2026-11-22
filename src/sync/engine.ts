@@ -21,9 +21,26 @@ export interface SyncResult {
 
 const MAX_ATTEMPTS = 5;
 
-export async function syncOnce(db: SchemaDB, store: BackupStore, now: () => string): Promise<SyncResult> {
+export interface SyncOptions {
+  /** Base wait before asking again after a stale answer (grows each try). */
+  staleDelayMs?: number;
+}
+
+const PAST_HEADS = 50;
+
+export async function syncOnce(db: SchemaDB, store: BackupStore, now: () => string, opts: SyncOptions = {}): Promise<SyncResult> {
+  const staleDelay = opts.staleDelayMs ?? 1500;
   for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
     const { head, files } = await store.list();
+
+    // An answer describing a backup version this device has already moved
+    // past is stale (a cache, or GitHub catching up). Planning from it would
+    // make freshly saved tidbits look deleted elsewhere — so ask again.
+    const known = await db.getSyncHead();
+    if (known && head !== known.head && known.past.includes(head)) {
+      await new Promise((r) => setTimeout(r, staleDelay * (attempt + 1)));
+      continue;
+    }
     const baseRows = await db.syncBase.toArray();
     const baseById = new Map(baseRows.map((r) => [r.path, r]));
 
@@ -49,10 +66,11 @@ export async function syncOnce(db: SchemaDB, store: BackupStore, now: () => stri
     const plan = planSync({ local, localReview, remote, base });
 
     let listing = files;
+    let newHead = head;
     if (plan.writes.size || plan.deletes.length) {
       try {
         const n = [...plan.writes.keys()].filter((p) => p.startsWith('tidbits/')).length + plan.deletes.length;
-        ({ files: listing } = await store.write(head, plan.writes, plan.deletes, `Sync ${n} tidbit${n === 1 ? '' : 's'} · ${now()}`));
+        ({ files: listing, head: newHead } = await store.write(head, plan.writes, plan.deletes, `Sync ${n} tidbit${n === 1 ? '' : 's'} · ${now()}`));
       } catch (e) {
         if (e instanceof StaleError) {
           // Another device (or another tab) synced first: wait a moment, so two
@@ -89,6 +107,13 @@ export async function syncOnce(db: SchemaDB, store: BackupStore, now: () => stri
       );
       const account = await db.getSyncAccount();
       if (account) await db.setSyncAccount({ ...account, lastSyncAt: now() });
+      // Remember where the backup is now, and every version we've moved past.
+      const prev = await db.getSyncHead();
+      if (!prev || prev.head !== newHead) {
+        const past = prev ? [prev.head, ...prev.past] : newHead === head ? [] : [head];
+        if (newHead !== head && !past.includes(head)) past.unshift(head);
+        await db.setSyncHead({ head: newHead, past: past.filter((h) => h !== newHead).slice(0, PAST_HEADS) });
+      }
     });
 
     const uploaded = [...plan.writes.keys()].filter((p) => p.startsWith('tidbits/')).length + plan.deletes.length;

@@ -19,7 +19,7 @@ export interface Settings {
 export const DEFAULT_SETTINGS: Settings = { reviewSize: 5 };
 
 interface KV {
-  key: 'review' | 'manifest' | 'settings' | 'sync';
+  key: 'review' | 'manifest' | 'settings' | 'sync' | 'syncHead';
   value: unknown;
 }
 
@@ -29,6 +29,17 @@ export interface BaseFile {
   /** Content id in the backup (git blob SHA). */
   id: string;
   text: string;
+}
+
+/**
+ * Backup versions (git commits) as this device has seen them. If GitHub — or
+ * a cache in between — ever reports one this device has already moved past,
+ * the answer is stale and must not be trusted.
+ */
+export interface SyncHead {
+  head: string;
+  /** Earlier heads, newest first (bounded). */
+  past: string[];
 }
 
 /** Which backup this device syncs with, and how it went last time. */
@@ -99,6 +110,16 @@ export class SchemaDB extends Dexie {
   async setSyncAccount(a: SyncAccount | null): Promise<void> {
     if (a) await this.kv.put({ key: 'sync', value: a });
     else await this.kv.delete('sync');
+  }
+
+  /** The backup version this device last synced to, and the ones it has moved past. */
+  async getSyncHead(): Promise<SyncHead | null> {
+    return ((await this.kv.get('syncHead'))?.value as SyncHead | undefined) ?? null;
+  }
+
+  async setSyncHead(h: SyncHead | null): Promise<void> {
+    if (h) await this.kv.put({ key: 'syncHead', value: h });
+    else await this.kv.delete('syncHead');
   }
 
   async getSettings(): Promise<Settings> {

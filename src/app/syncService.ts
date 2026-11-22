@@ -151,6 +151,7 @@ class SyncService {
     const full: SyncAccount = { provider: 'github', ...account };
     await db.setSyncAccount(full);
     await db.syncBase.clear(); // a fresh start against this backup
+    await db.setSyncHead(null);
     this.syncedFingerprint = '';
     this.activate(full);
   }
@@ -160,6 +161,7 @@ class SyncService {
     this.teardown();
     await db.setSyncAccount(null);
     await db.syncBase.clear();
+    await db.setSyncHead(null);
   }
 
   private teardown() {

@@ -321,7 +321,16 @@ Reading: one tree listing per sync; only files whose blob SHA changed since
 the base are downloaded. Writing: one commit per sync (Git Data API: tree with
 inline contents → commit → move the branch ref with `force: false`). If
 another device moved the branch first, the sync starts over and merges again.
-`index.json` is regenerated in the same commit. `review.json` merges per
+`index.json` is regenerated in the same commit.
+
+**Never trust a stale answer.** GitHub's API responses say `max-age=60`, so a
+browser may answer "what's in the backup?" from a copy up to a minute old.
+Planned from that copy, a tidbit uploaded seconds ago looks deleted by
+another device and gets removed here (it comes back later, but it must not
+vanish at all). So every GitHub request is `cache: 'no-store'`, and each
+device remembers the backup versions (commits) it has already moved past: an
+answer describing one of those is stale, and the sync waits and asks again
+instead of acting on it. `review.json` merges per
 tidbit (the most recently reviewed entry wins). A schema with a newer
 `formatVersion` is read but never written, and the app says to update.
 

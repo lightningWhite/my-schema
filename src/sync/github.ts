@@ -267,6 +267,10 @@ async function call(fetchImpl: Fetch, token: string, path: string, init: CallIni
   try {
     res = await fetchImpl(API + path, {
       ...rest,
+      // GitHub sends `Cache-Control: max-age=60`, so browsers may answer from
+      // a copy up to a minute old. A stale answer makes a just-saved tidbit
+      // look deleted elsewhere. Always ask GitHub.
+      cache: 'no-store',
       headers: {
         Accept: 'application/vnd.github+json',
         Authorization: `Bearer ${token}`,

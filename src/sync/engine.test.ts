@@ -16,7 +16,7 @@ async function device(gh: FakeGitHub, token = 'tok') {
   const account = await GitHubStore.connect(token, gh.fetch);
   await db.setSyncAccount({ provider: 'github', ...account });
   const store = new GitHubStore(account, gh.fetch);
-  return { db, store, sync: () => syncOnce(db, store, () => '2026-11-21T00:00:00.000Z') };
+  return { db, store, sync: () => syncOnce(db, store, () => '2026-11-21T00:00:00.000Z', { staleDelayMs: 1 }) };
 }
 
 describe('sync with GitHub (end to end, fake GitHub)', () => {
@@ -265,5 +265,41 @@ describe('finishing setup after installing the app', () => {
     const err = await GitHubStore.connectWhenReady('app', { fetch: gh.fetch, patient: true, ...fast }).catch((e) => e);
     expect(err.problem).toEqual({ kind: 'not-visible-yet' });
     expect(err.message).toMatch(/Check again/);
+  });
+});
+
+describe('stale answers from GitHub (cached responses)', () => {
+  it('a just-uploaded tidbit does not vanish when GitHub briefly reports the old backup', async () => {
+    const gh = new FakeGitHub({ tok: 'me' });
+    const a = await device(gh);
+    const ctx = testCtx();
+    await a.db.tidbits.add(createTidbit(ctx, { text: 'an older tidbit' }));
+    await a.sync(); // the backup is set up and has something in it
+    ctx.advance(60_000);
+    const t = createTidbit(ctx, { text: 'quick draft', draft: true });
+    await a.db.tidbits.add(t);
+    await a.sync(); // the draft is uploaded
+
+    gh.staleRefReads = 2; // the next lookups get the backup as it was before the upload
+    await a.sync();
+    expect(await a.db.tidbits.get(t.id)).toEqual(t); // still here
+    expect(gh.files('me', REPO_NAME).has(`tidbits/${t.id}.md`)).toBe(true); // and still backed up
+
+    await a.sync(); // fresh answers again
+    expect(await a.db.tidbits.get(t.id)).toEqual(t);
+  });
+
+  it('a stale answer during a save is recognized, not mistaken for a GitHub error', async () => {
+    const gh = new FakeGitHub({ tok: 'me' });
+    const a = await device(gh);
+    await a.db.tidbits.add(createTidbit(testCtx(), { text: 'one' }));
+    await a.sync();
+    await a.sync();
+    const t2 = createTidbit(testCtx('2026-12-01T00:00:00.000Z'), { text: 'two' });
+    await a.db.tidbits.add(t2);
+    gh.staleRefReads = 1;
+    await a.sync();
+    expect(gh.files('me', REPO_NAME).has(`tidbits/${t2.id}.md`)).toBe(true);
+    expect(await a.db.tidbits.count()).toBe(2);
   });
 });

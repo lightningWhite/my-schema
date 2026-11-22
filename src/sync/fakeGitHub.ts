@@ -20,6 +20,12 @@ export class FakeGitHub {
    * GitHub App sign-ins answer 404 even for granted repos.
    */
   propagationLookups = 0;
+  /**
+   * Simulates a cached (stale) answer: the next N branch lookups return the
+   * branch as it was one commit ago — what a browser's HTTP cache can serve
+   * for up to a minute after GitHub says `max-age=60`.
+   */
+  staleRefReads = 0;
   /** The next N branch updates fail with a 422 that isn't about staleness. */
   refUpdateFailures = 0;
   /** Runs just before a branch update is applied (simulate another device). */
@@ -133,6 +139,11 @@ export class FakeGitHub {
     let g: RegExpExecArray | null;
     if ((g = /^\/git\/ref\/heads\/(.+)$/.exec(rest)) && method === 'GET') {
       if (!repo.ref) return json(409, { message: 'Git Repository is empty.' });
+      const parent = repo.commits.get(repo.ref)?.parents[0];
+      if (this.staleRefReads > 0 && parent) {
+        this.staleRefReads--;
+        return json(200, { object: { sha: parent } });
+      }
       return json(200, { object: { sha: repo.ref } });
     }
     if ((g = /^\/contents\/(.+)$/.exec(rest)) && method === 'PUT') {
