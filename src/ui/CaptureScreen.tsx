@@ -15,6 +15,7 @@ import { currentRevision, displayTitle, splitTidbit, TIDBIT_SOFT_LENGTH } from '
 import type { Kind, Tidbit } from '../core/types';
 import { TidbitEditor } from './TidbitEditor';
 import { PassingStrip } from './PassingStrip';
+import { ShareLink } from './ShareLink';
 import { CategoryPicker, ConfidenceChips, Icon, KindBadge, KindChips, Logo } from './parts';
 
 export function CaptureScreen() {
@@ -188,9 +189,13 @@ export function CaptureScreen() {
             </span>
           )}
         </div>
-        <a className="about-link" href={href({ name: 'about' })}>
-          About Schema
-        </a>
+        <div className="capture-footer">
+          <a className="footer-link" href={href({ name: 'about' })}>
+            About Schema
+          </a>
+          <span aria-hidden="true">·</span>
+          <ShareLink />
+        </div>
 
         {saved && <SavedCard tidbit={saved} tidbits={tidbits} onDone={() => setJustSaved(null)} />}
 

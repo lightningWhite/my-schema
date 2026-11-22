@@ -1444,15 +1444,26 @@ kbd {
   margin: 36px 0 12px;
 }
 
-.about-link {
-  display: block;
-  width: fit-content;
-  margin: 6px auto 0;
+.capture-footer {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 8px;
+  margin-top: 6px;
   font-size: 0.85rem;
   color: var(--ink-3);
 }
-.about-link:hover {
+.footer-link {
+  font: inherit;
+  color: var(--ink-3);
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+}
+.footer-link:hover {
   color: var(--accent);
+  text-decoration: none;
 }
 
 .small-link {
