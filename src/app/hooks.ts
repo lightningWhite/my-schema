@@ -38,6 +38,7 @@ export type Route =
   | { name: 'capture' }
   | { name: 'organize' }
   | { name: 'about' }
+  | { name: 'categories' }
   | { name: 'review' }
   | { name: 'schema'; category?: string; query?: string }
   | { name: 'tidbit'; id: string }
@@ -53,6 +54,8 @@ export function parseRoute(hash: string): Route {
       return { name: 'organize' };
     case 'about':
       return { name: 'about' };
+    case 'categories':
+      return { name: 'categories' };
     case 'review':
       return { name: 'review' };
     case 'schema':

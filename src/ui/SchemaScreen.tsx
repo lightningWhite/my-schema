@@ -73,6 +73,11 @@ export function SchemaScreen({ category, query }: { category?: string; query?: s
           {tree.map((n) => (
             <TreeNode key={n.path} node={n} selected={category} onSelect={setCategory} depth={0} />
           ))}
+          {tree.length > 0 && (
+            <a className="tree-manage" href="#/categories">
+              Manage categories
+            </a>
+          )}
         </nav>
         <div className="schema-main">
           <input className="search" type="search" placeholder="Search your schema" value={q} onChange={(e) => setQ(e.target.value)} aria-label="Search" />

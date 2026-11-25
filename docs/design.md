@@ -75,7 +75,7 @@ term ever makes the UI less clear, use the plain word.
 | `source` | Optional. Who or where it came from — required in spirit for a `quote` ("Marcus Aurelius, *Meditations*"), useful for a `fact` or `tip`. |
 | `confidence` | Optional. `hunch` · `leaning` · `confident` · `conviction`. Lives on each revision, so you can see confidence change over time. Not shown for kinds where it makes no sense (`question`, `quote`). |
 | `status` | `draft` · `active` · `dormant` · `succeeded`. Quick captures start as **drafts**: kept out of Review and the passing strip until marked done in Organize. The full editor saves straight to `active`. |
-| `category` | One path in a tree, e.g. `Parenting/Discipline`, `Engineering/C++`. Created on the fly. |
+| `category` | One path in a tree, e.g. `Parenting/Discipline`, `Engineering/C++`. Created on the fly — but the picker shows every category (*All*) and matches as you type, and a name differing only in capitals reuses the existing one, so near-duplicates are hard to make. **Manage categories** renames, moves (rename to `Family/Kids`), merges (rename into an existing one) or deletes (tidbits move to the parent, or Unsorted); subcategories come along, tidbits are never deleted, and only labels change, so it syncs like any edit. |
 | `tags` | Free-form, cross-cutting. |
 | `links` | Typed links to other tidbits: `related`, `supports`, `contradicts`, `succeededBy`, `succeeds`. Stored on one side only; the app reads backlinks to show both directions. |
 | `origin` | Set when planted from someone else: `{ schema, tidbit, revision }`. Null for your own. |

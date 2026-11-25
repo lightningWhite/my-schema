@@ -1627,3 +1627,71 @@ kbd {
 .setup-problem .button-row {
   margin-top: 4px;
 }
+
+/* ------------------------------------------------------------ category picker */
+
+.category-results,
+.category-all {
+  margin-top: 8px;
+  padding: 10px;
+  border: 1px dashed var(--line);
+  border-radius: var(--r-card);
+}
+.category-all {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  max-height: 260px;
+  overflow-y: auto;
+}
+.category-all > a {
+  align-self: flex-start;
+}
+
+/* ------------------------------------------------------------ manage categories */
+
+.tree-manage {
+  font-size: 0.85rem;
+  padding: 6px 10px;
+  color: var(--ink-3);
+}
+.tree-manage:hover {
+  color: var(--accent);
+}
+.category-list {
+  list-style: none;
+  padding: 0;
+  margin: 12px 0;
+}
+.category-list > li {
+  border-bottom: 1px solid var(--line);
+}
+.category-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 44px;
+}
+.category-name {
+  color: var(--ink);
+  font-weight: 550;
+}
+.category-row .count {
+  color: var(--ink-3);
+  font-size: 0.85rem;
+}
+.category-actions {
+  margin-left: auto;
+  display: flex;
+  gap: 2px;
+}
+.category-edit {
+  padding: 4px 0 12px;
+}
+.category-edit.danger-panel {
+  border: none;
+  padding-top: 0;
+}
+.category-edit p {
+  margin: 6px 0 0;
+}

@@ -4,6 +4,7 @@
  * IndexedDB transaction. Screens call these; they never touch the DB directly
  * for writes.
  */
+import { deleteCategory, inCategory, parentCategory, renameCategory, renamedPath } from '../core/categories';
 import { toFiles, canWrite, fromFiles, mergeTidbitSets, type ImportResult } from '../core/files';
 import { schedule, type ReviewOutcome } from '../core/review';
 import {
@@ -178,4 +179,38 @@ export async function importFiles(files: File[]): Promise<ImportSummary> {
     summary = { added, merged, errors: result.errors };
   });
   return summary;
+}
+
+// ---------------------------------------------------------------- categories
+
+/**
+ * Rename, move or merge a category across the whole schema. Only labels
+ * change; each tidbit's history is untouched. Syncs like any other edit.
+ */
+export async function renameCategoryEverywhere(from: string, to: string): Promise<number> {
+  let n = 0;
+  await db.transaction('rw', db.tidbits, db.kv, async () => {
+    const changed = renameCategory(ctx, await db.tidbits.toArray(), from, to);
+    if (changed.length) await db.tidbits.bulkPut(changed);
+    n = changed.length;
+    const settings = await db.getSettings();
+    const focus = renamedPath(settings.reviewFocus, from, to);
+    if (focus !== settings.reviewFocus) await db.setSettings({ ...settings, reviewFocus: focus });
+  });
+  return n;
+}
+
+/** Delete a category (and its subcategories); its tidbits move up to the parent, or to Unsorted. */
+export async function deleteCategoryEverywhere(path: string): Promise<number> {
+  let n = 0;
+  await db.transaction('rw', db.tidbits, db.kv, async () => {
+    const changed = deleteCategory(ctx, await db.tidbits.toArray(), path);
+    if (changed.length) await db.tidbits.bulkPut(changed);
+    n = changed.length;
+    const settings = await db.getSettings();
+    if (settings.reviewFocus && inCategory(settings.reviewFocus, path)) {
+      await db.setSettings({ ...settings, reviewFocus: parentCategory(path) });
+    }
+  });
+  return n;
 }

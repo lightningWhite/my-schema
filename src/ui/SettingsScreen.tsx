@@ -158,6 +158,13 @@ export function SettingsScreen({ theme, onTheme }: { theme: Theme; onTheme: (t: 
       </section>
 
       <section className="settings-section">
+        <h2>Categories</h2>
+        <p className="muted">
+          Rename, merge or delete categories; tidbits move along with them. <a href="#/categories">Manage categories</a>
+        </p>
+      </section>
+
+      <section className="settings-section">
         <h2>About</h2>
         <p className="muted">
           What Schema is for and how it works. <a href="#/about">Read about Schema</a>

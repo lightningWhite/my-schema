@@ -1,5 +1,6 @@
-import { useId, useState, type ReactNode } from 'react';
+import { useState, type ReactNode } from 'react';
 import { CONFIDENCE_LABEL, KIND_INFO } from '../core/kinds';
+import { filterCategories, resolveCategory } from '../core/categories';
 import { currentRevision, displayTitle } from '../core/tidbit';
 import { CONFIDENCES, KINDS, type Confidence, type Kind, type Tidbit, type Revision } from '../core/types';
 import { href } from '../app/hooks';
@@ -96,8 +97,10 @@ export function ConfidenceChips({ value, onChange }: { value?: Confidence; onCha
 }
 
 /**
- * Recent categories as one-tap chips, plus a field for a new or existing
- * path (with autocomplete from every category in the schema).
+ * Choosing a category: recent ones as one-tap chips, every category one tap
+ * away under "All", and matches as you type — so it's easy to reuse an
+ * existing category instead of creating a near-duplicate. Typing a name that
+ * differs only in capitals reuses the existing one.
  */
 export function CategoryPicker(props: {
   value?: string;
@@ -107,40 +110,66 @@ export function CategoryPicker(props: {
   onChange: (c: string | undefined) => void;
 }) {
   const [draft, setDraft] = useState('');
-  const listId = useId();
-  const options = [...new Set([...(props.suggestion ? [props.suggestion] : []), ...(props.value ? [props.value] : []), ...props.recent])];
-  const submit = () => {
-    const v = draft.trim();
-    if (v) props.onChange(v);
+  const [showAll, setShowAll] = useState(false);
+  const quick = [...new Set([props.suggestion, props.value, ...props.recent].filter((c): c is string => !!c))];
+  const typing = draft.trim().length > 0;
+  const matches = typing ? filterCategories(props.all, draft, 12) : [];
+  const resolved = typing ? resolveCategory(props.all, draft) : undefined;
+  const isNew = !!resolved && !props.all.includes(resolved);
+
+  const choose = (c: string | undefined) => {
+    props.onChange(c);
     setDraft('');
+    setShowAll(false);
   };
+  const chip = (c: string) => (
+    <Chip key={c} selected={props.value === c} onClick={() => choose(props.value === c ? undefined : c)}>
+      {c.split('/').join(' / ')}
+    </Chip>
+  );
+
   return (
-    <div className="chips" role="group" aria-label="Category">
-      {options.map((c) => (
-        <Chip key={c} selected={props.value === c} onClick={() => props.onChange(props.value === c ? undefined : c)}>
-          {c}
-        </Chip>
-      ))}
-      <input
-        className="chip-input"
-        list={listId}
-        placeholder={options.length ? 'Other…' : 'Category, e.g. Garden/Tomatoes'}
-        value={draft}
-        onChange={(e) => setDraft(e.target.value)}
-        onKeyDown={(e) => {
-          if (e.key === 'Enter') {
-            e.preventDefault();
-            submit();
-          }
-        }}
-        onBlur={submit}
-        aria-label="New category"
-      />
-      <datalist id={listId}>
-        {props.all.map((c) => (
-          <option key={c} value={c} />
-        ))}
-      </datalist>
+    <div className="category-picker">
+      <div className="chips" role="group" aria-label="Category">
+        {quick.map(chip)}
+        {props.all.length > quick.length && (
+          <Chip muted selected={showAll} onClick={() => setShowAll(!showAll)}>
+            {showAll ? 'Fewer' : `All ${props.all.length}…`}
+          </Chip>
+        )}
+        <input
+          className="chip-input"
+          placeholder={props.all.length ? 'Find or add…' : 'Category, e.g. Garden/Tomatoes'}
+          value={draft}
+          onChange={(e) => setDraft(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') {
+              e.preventDefault();
+              if (resolved) choose(resolved);
+            } else if (e.key === 'Escape') setDraft('');
+          }}
+          aria-label="Find or add a category"
+        />
+      </div>
+      {typing && (
+        <div className="chips category-results" aria-label="Matching categories">
+          {matches.map(chip)}
+          {isNew && (
+            <Chip onClick={() => choose(resolved)} title="Create this category">
+              + New: {resolved!.split('/').join(' / ')}
+            </Chip>
+          )}
+          {!matches.length && !isNew && <span className="muted small">No match</span>}
+        </div>
+      )}
+      {showAll && !typing && (
+        <div className="category-all">
+          <div className="chips">{props.all.map(chip)}</div>
+          <a className="small" href="#/categories">
+            Rename, merge or delete categories
+          </a>
+        </div>
+      )}
     </div>
   );
 }

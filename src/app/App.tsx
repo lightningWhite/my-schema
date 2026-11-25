@@ -9,6 +9,7 @@ import { TidbitScreen } from '../ui/TidbitScreen';
 import { SettingsScreen } from '../ui/SettingsScreen';
 import { OrganizeScreen } from '../ui/OrganizeScreen';
 import { AboutScreen } from '../ui/AboutScreen';
+import { CategoriesScreen } from '../ui/CategoriesScreen';
 import { useTheme } from './theme';
 import { href, useNow, useReviewState, useRoute, useTidbits, useSettings, type Route } from './hooks';
 
@@ -40,7 +41,7 @@ export function App() {
     void (reviewBadge ? navigator.setAppBadge(reviewBadge) : navigator.clearAppBadge()).catch(() => {});
   }, [reviewBadge]);
 
-  const active = route.name === 'tidbit' ? 'schema' : route.name;
+  const active = route.name === 'tidbit' || route.name === 'categories' ? 'schema' : route.name;
 
   return (
     <div className="app">
@@ -62,6 +63,7 @@ export function App() {
         {route.name === 'capture' && <CaptureScreen />}
         {route.name === 'organize' && <OrganizeScreen />}
         {route.name === 'about' && <AboutScreen />}
+        {route.name === 'categories' && <CategoriesScreen />}
         {route.name === 'review' && <ReviewScreen />}
         {route.name === 'schema' && <SchemaScreen key={route.category ?? ''} category={route.category} query={route.query} />}
         {route.name === 'tidbit' && <TidbitScreen key={route.id} id={route.id} />}
